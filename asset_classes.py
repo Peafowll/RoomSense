@@ -2,6 +2,12 @@ import streamlit as st
 def custom_progress_bar(current, min_val, max_val, color="#4CAF50", height="30px"):
     """
     Renders a custom progress bar in Streamlit.
+    Params:
+        current (int) : The current value to be displayed on the bar
+        min_val (int) : The minimum value of the bar, that is also displayed on the left of it
+        max_val (int) : The maximum value of the bar, that is also displayed on the right of it
+        color (str) : The hexcode of the color of the bar (e.g., '#4CAF50')
+        height (str) : The height of the bar, in pixels (e.g., '25px')
     """
     try:
         percentage = max(0, min(100, ((current - min_val) / (max_val - min_val)) * 100))
