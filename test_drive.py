@@ -45,7 +45,7 @@ with tab1:
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number",
                 value = data["light"],
-                number = {'suffix': " LUX", 'font': {'size': 40, 'color': '#333', 'weight': 'bold'}},
+                number = {'suffix': " LUX", 'font': {'size': 40, 'color': "#bbbbbb", 'weight': 'bold'}},
                 gauge = {
                     'axis': {'range': [None, 1000], 'tickwidth': 1, 'tickcolor': "darkblue"},
                     'bar': {'color': "#cbd5e1"},
@@ -88,11 +88,11 @@ with tab1:
                 color = color,
                 height = "30px"
             )
-                
+            
             st.markdown(f"""
-                <div style="display: flex; align-items: center; height: 180px; justify-content: center; flex-direction: column;">
-                    <h1 style="color: {color}; font-size: 2.5rem; margin: 0;">{status}</h1>
-                    <p style="font-size: 1.2rem; color: #555; font-weight: bold;">AQI {aqi}</p>
+                <div style="display: flex; align-items: center; height: 165px; justify-content: center; flex-direction: column;">
+                    <h1 style="color: {color}; font-size: 2.5rem; margin: 0;text-align: center">{status}</h1>
+                    <p style="font-size: 1.2rem; color: #555; font-weight: bold; text-align: center">AQI {aqi}</p>
                 </div>
                 <p style="text-align: center; color: #666;">{desc}</p>
             """, unsafe_allow_html=True)
@@ -143,3 +143,19 @@ with tab1:
 
 with tab2:
     st.write("tab 2 yippie")
+
+    dates = pd.date_range(end=pd.Timestamp.today(), periods=30, freq='D')
+    mock_df = pd.DataFrame({
+        "Date": dates,
+        "Temperature (°C)": np.random.normal(loc=22, scale=2, size=30),
+        "Air Quality (AQI)": np.random.normal(loc=120, scale=30, size=30)
+    })
+
+    display_historical_graph(
+        df=mock_df,
+        date_column="Date",
+        metric_column="Air Quality (AQI)",
+        title="30-Day AQI Trend",
+        line_color="#3b82f6", 
+        fill_area=True
+    )
