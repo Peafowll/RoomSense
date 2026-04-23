@@ -144,18 +144,20 @@ with tab1:
 with tab2:
     st.write("tab 2 yippie")
 
-    dates = pd.date_range(end=pd.Timestamp.today(), periods=30, freq='D')
-    mock_df = pd.DataFrame({
-        "Date": dates,
-        "Temperature (°C)": np.random.normal(loc=22, scale=2, size=30),
-        "Air Quality (AQI)": np.random.normal(loc=120, scale=30, size=30)
-    })
+    with open("dummy_temp_history.json", "r") as file:
+        temp_history_data = json.load(file)
+
+    df = pd.DataFrame(temp_history_data)
+
+    st.subheader("Raw Data Preview")
+    st.dataframe(df) 
 
     display_historical_graph(
-        df=mock_df,
-        date_column="Date",
-        metric_column="Air Quality (AQI)",
-        title="30-Day AQI Trend",
-        line_color="#3b82f6", 
-        fill_area=True
+        df = df,
+        date_column = "timestamp",
+        metric_column = "temperature",
+        title = "Historical Temp Data,",
+        line_color = "#f97316",
+        fill_area = True,
+        y_range=[0, 50]
     )

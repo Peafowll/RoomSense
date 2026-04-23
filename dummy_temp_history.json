@@ -1,0 +1,6 @@
+[
+  {"timestamp": "2026-04-23 10:00:00", "temperature": 0, "humidity": 45},
+  {"timestamp": "2026-04-23 11:00:00", "temperature": 18.1, "humidity": 46},
+  {"timestamp": "2026-04-23 12:00:00", "temperature": 22.8, "humidity": 44},
+  {"timestamp": "2026-04-23 13:00:00", "temperature": 30.2, "humidity": 42}
+]

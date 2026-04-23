@@ -37,7 +37,7 @@ def custom_progress_bar(current, min_val, max_val, color="#4CAF50", height="30px
     st.markdown(html_content, unsafe_allow_html=True)
 
 
-def display_historical_graph(df, date_column, metric_column, title, line_color="#3b82f6", fill_area=True):
+def display_historical_graph(df, date_column, metric_column, title, line_color="#3b82f6", fill_area=True, y_range = None):
     """
     Renders a detailed historical interactive graph in Streamlit using Plotly.
     
@@ -48,6 +48,7 @@ def display_historical_graph(df, date_column, metric_column, title, line_color="
     - title (str): The title displayed above the chart.
     - line_color (str): Hex color code for the line. Default is blue.
     - fill_area (bool): If True, fills the area under the line. Default is True.
+    - y_range (list): A list with 2 elements representing the bounds of the y_range. (e.g. [0,50])
     """
     
     df[date_column] = pd.to_datetime(df[date_column])
@@ -70,6 +71,9 @@ def display_historical_graph(df, date_column, metric_column, title, line_color="
     
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(200, 200, 200, 0.2)')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(200, 200, 200, 0.2)')
+
+    if y_range is not None:
+        fig.update_yaxes(range=y_range)
 
     st.plotly_chart(fig, use_container_width=True)
 
