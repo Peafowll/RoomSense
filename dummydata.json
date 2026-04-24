@@ -1,6 +1,7 @@
 {
     "temp" : 45,
-    "air" : 500,
+    "gas" : 500,
     "light" : 600,
-    "door_open" : false
+    "humidity" : 50,
+    "window_open" : false
 }

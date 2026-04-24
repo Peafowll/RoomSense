@@ -69,8 +69,8 @@ with tab1:
     # --- CARD 2: AIR QUALITY ---
     with col2:
         with st.container(border=True):
-            st.markdown("### ☁️ AIR QUALITY")
-            aqi = data["air"]
+            st.markdown("### ☁️ Gases in Room")
+            aqi = data["gas"]
             
             if aqi <= 400:
                 status, color, desc = "EXCELLENT", "#22c55e", "Fresh air, low particulates"
@@ -116,20 +116,20 @@ with tab1:
     # --- CARD 4: DOOR STATUS ---
     with col4:
         with st.container(border=True):
-            st.markdown("### 🚪 DOOR STATUS")
+            st.markdown("### 🪟 WINDOW STATUS")
             
-            is_open = data["door_open"]
+            is_open = data["window_open"]
             
             if is_open:
-                icon = "🚪"
-                bg_color = "#f97316"
+                icon = "🪟"
+                bg_color = "#70f16c"
                 text = "OPEN"
-                desc = "Main entrance, currently open!"
+                desc = "Main window open."
             else:
-                icon = "🚪"
-                bg_color = "#22c55e"
+                icon = "🪟"
+                bg_color = "#eb5353"
                 text = "CLOSED"
-                desc = "Main entrance, securely closed."
+                desc = "Main window closed."
                 
             st.markdown(f"""
                 <div style="display: flex; align-items: center; justify-content: center; height: 180px; gap: 20px;">
@@ -156,7 +156,7 @@ with tab2:
         df = df,
         date_column = "timestamp",
         metric_column = "temperature",
-        title = "Historical Temp Data,",
+        title = "Historical Temp Data",
         line_color = "#f97316",
         fill_area = True,
         y_range=[0, 50]
