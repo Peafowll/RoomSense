@@ -110,5 +110,75 @@
         "gas": 0,
         "light": 104.18,
         "oxygenation": 93
+    },
+    "2026-04-24T19:44:03.090916": {
+        "temp": 26.1,
+        "humidity": 24.8,
+        "gas": 0,
+        "light": 177.75,
+        "oxygenation": 100
+    },
+    "2026-04-24T19:50:21.760628": {
+        "temp": 26.1,
+        "humidity": 25.5,
+        "gas": 0,
+        "light": 164.17,
+        "oxygenation": 100
+    },
+    "2026-04-24T19:50:33.643019": {
+        "temp": 26.2,
+        "humidity": 25.5,
+        "gas": 0,
+        "light": 157.03,
+        "oxygenation": 100
+    },
+    "2026-04-24T19:50:45.203474": {
+        "temp": 26.2,
+        "humidity": 25.2,
+        "gas": 0,
+        "light": 122.93,
+        "oxygenation": 100
+    },
+    "2026-04-24T19:50:56.990009": {
+        "temp": 26.1,
+        "humidity": 25.2,
+        "gas": 0,
+        "light": 172.07,
+        "oxygenation": 100
+    },
+    "2026-04-24T19:51:08.459868": {
+        "temp": 26.1,
+        "humidity": 25.5,
+        "gas": 0,
+        "light": 175.0,
+        "oxygenation": 100
+    },
+    "2026-04-24T19:51:20.019120": {
+        "temp": 26.1,
+        "humidity": 25.4,
+        "gas": 0,
+        "light": 173.28,
+        "oxygenation": 100
+    },
+    "2026-04-24T19:51:31.208591": {
+        "temp": 26.1,
+        "humidity": 25.2,
+        "gas": 0,
+        "light": 178.26,
+        "oxygenation": 100
+    },
+    "2026-04-24T19:51:42.485969": {
+        "temp": 26.1,
+        "humidity": 25.0,
+        "gas": 0,
+        "light": 181.36,
+        "oxygenation": 100
+    },
+    "2026-04-24T19:51:53.725815": {
+        "temp": 26.2,
+        "humidity": 25.3,
+        "gas": 0,
+        "light": 181.62,
+        "oxygenation": 100
     }
 }

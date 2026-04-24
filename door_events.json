@@ -43,5 +43,35 @@
         "window_open": true,
         "closed": false,
         "distanta": 100.0
+    },
+    "2026-04-24T19:50:32.443977": {
+        "window_open": false,
+        "closed": true,
+        "distanta": 14.52
+    },
+    "2026-04-24T19:50:34.554324": {
+        "window_open": true,
+        "closed": false,
+        "distanta": 100.0
+    },
+    "2026-04-24T19:50:36.709250": {
+        "window_open": false,
+        "closed": true,
+        "distanta": 5.06
+    },
+    "2026-04-24T19:50:37.810896": {
+        "window_open": true,
+        "closed": false,
+        "distanta": 22.36
+    },
+    "2026-04-24T19:50:40.035052": {
+        "window_open": false,
+        "closed": true,
+        "distanta": 13.6
+    },
+    "2026-04-24T19:50:47.563422": {
+        "window_open": true,
+        "closed": false,
+        "distanta": 70.56
     }
 }

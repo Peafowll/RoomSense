@@ -71,6 +71,51 @@ def _temperature_to_color(temp_c: float) -> str:
     return _value_to_gradient_color(temp_c, comfy, hot, "#22c55e", "#ef4444")
 
 
+def _build_notifications(
+    *,
+    current_data: dict,
+    door_data: dict,
+    outside_temp_c: float | None,
+    historical_data: dict | None,
+) -> list[tuple[str, str]]:
+    notifications: list[tuple[str, str]] = []
+
+    def _num(value, default: float | None = None) -> float | None:
+        try:
+            if value is None:
+                return default
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    temp_c = _num(current_data.get("temp"))
+    gas = _num(current_data.get("gas"))
+    humidity = _num(current_data.get("humidity"))
+
+    is_window_open = bool(door_data.get("window_open", current_data.get("window_open", False)))
+
+    if gas is not None:
+        if gas > 50:
+            notifications.append(("error", "Hazardous air quality. Ventilate immediately."))
+        elif gas > 30:
+            notifications.append(("warning", "Air quality is getting poor. Please open a window."))
+
+    if temp_c is not None:
+        if temp_c >= 26 and not is_window_open:
+            if outside_temp_c is None or outside_temp_c < temp_c:
+                notifications.append(("info", "Room is warm. Consider opening a window."))
+        if temp_c <= 18 and is_window_open:
+            notifications.append(("warning", "Warning: temperature is low. Close the window."))
+
+    if humidity is not None:
+        if humidity >= 65:
+            notifications.append(("info", "Humidity is high. Ventilation may help."))
+        elif humidity <= 25:
+            notifications.append(("info", "Humidity is low. Consider humidifying the room."))
+
+    return notifications
+
+
 def _load_json_safely(path: Path, *, retries: int = 5, delay_s: float = 0.05) -> dict | None:
     """Read JSON that may be rewritten frequently (avoid crashes on partial writes)."""
     for attempt in range(retries):
@@ -169,6 +214,52 @@ with tab1:
 
         door_data = _get_latest_door_current_data() or {}
 
+        outside_temp_c: float | None = None
+        try:
+            outside_weather = _get_outside_weather(OUTSIDE_LOCATION)
+            if outside_weather is not None:
+                outside_temp_c = outside_weather[0]
+        except Exception:
+            outside_temp_c = None
+
+        historical_data = _get_latest_historical_data()
+
+        with st.container(border=True):
+            st.markdown("### 🔔 Notifications")
+            notifications = _build_notifications(
+                current_data=data,
+                door_data=door_data,
+                outside_temp_c=outside_temp_c,
+                historical_data=historical_data,
+            )
+
+            manual_notifications = st.session_state.get("notifications")
+            if isinstance(manual_notifications, list):
+                for item in manual_notifications:
+                    if isinstance(item, str) and item.strip():
+                        notifications.append(("info", item.strip()))
+                    elif (
+                        isinstance(item, (tuple, list))
+                        and len(item) == 2
+                        and isinstance(item[0], str)
+                        and isinstance(item[1], str)
+                    ):
+                        kind, message = item
+                        if message.strip():
+                            notifications.append((kind, message.strip()))
+            if not notifications:
+                st.info("No notifications right now.")
+            else:
+                for kind, message in notifications:
+                    if kind == "error":
+                        st.error(message)
+                    elif kind == "warning":
+                        st.warning(message)
+                    elif kind == "success":
+                        st.success(message)
+                    else:
+                        st.info(message)
+
         # ==========================================
         # 4. DASHBOARD GRID
         # ==========================================
@@ -245,13 +336,6 @@ with tab1:
                 st.markdown("### 🌡️ TEMPERATURE")
 
                 outside_temp_html = ""
-                outside_temp_c = None
-                try:
-                    outside_weather = _get_outside_weather(OUTSIDE_LOCATION)
-                    if outside_weather is not None:
-                        outside_temp_c = outside_weather[0]
-                except Exception:
-                    outside_temp_c = None
                 if outside_temp_c is not None:
                     temp_diff = data["temp"] - outside_temp_c
                 
