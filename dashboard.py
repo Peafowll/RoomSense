@@ -223,7 +223,13 @@ with tab1:
                 """, unsafe_allow_html=True)
 
                 st.caption("Oxygenation")
-                st.progress(oxygenation)
+                custom_progress_bar(
+                    current=oxygenation,
+                    min_val=0,
+                    max_val=100,
+                    color=bg_color,
+                    height="30px",
+                )
 
                 st.markdown(f"<p style=\"text-align: center; color: #666;\">{desc}</p>", unsafe_allow_html=True)
 
