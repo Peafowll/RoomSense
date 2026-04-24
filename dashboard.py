@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import json
 import time
 import math
+import os
 from json import JSONDecodeError
 from pathlib import Path
 import pandas as pd
@@ -17,6 +18,7 @@ CURRENT_DATA_PATH = Path(__file__).with_name("current_data.json")
 HISTORICAL_DATA_PATH = Path(__file__).with_name("historical_data.json")
 DOOR_CURRENT_PATH = Path(__file__).with_name("door_current.json")
 DOOR_EVENTS_PATH = Path(__file__).with_name("door_events.json")
+OXYGEN_OVERRIDE_PATH = Path(__file__).with_name("oxygen_override.json")
 
 
 def _clamp(value: float, lo: float, hi: float) -> float:
@@ -292,6 +294,7 @@ def _build_notifications(
     outside_temp_c: float | None,
     outside_is_raining: bool | None,
     historical_data: dict | None,
+    hour_24: int | None = None,
 ) -> list[tuple[str, str]]:
     notifications: list[tuple[str, str]] = []
 
@@ -341,7 +344,10 @@ def _build_notifications(
             notifications.append(("warning", "⚠️ Air contamination is <b>over 25%</b>. Open the window."))
 
     # 5) Suggest turning off lights after 10pm when lux is high.
-    if light_lux is not None and light_lux > 100 and time.localtime().tm_hour >= 22:
+    if hour_24 is None:
+        hour_24 = time.localtime().tm_hour
+
+    if light_lux is not None and light_lux > 100 and (hour_24 >= 22 or hour_24 < 6):
         notifications.append(("info", "ℹ️ It's after <b>22:00</b> and the room is <b>bright</b>. Consider turning off the lights to avoid bad sleep quality."))
 
     return notifications
@@ -356,6 +362,18 @@ def _load_json_safely(path: Path, *, retries: int = 5, delay_s: float = 0.05) ->
             if attempt == retries - 1:
                 return None
             time.sleep(delay_s)
+
+
+def _atomic_write_json(path: Path, payload: dict) -> None:
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(payload, indent=4), encoding="utf-8")
+    try:
+        os.replace(tmp_path, path)
+    finally:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 def _get_latest_current_data() -> dict | None:
@@ -393,6 +411,52 @@ def _get_latest_door_events_data() -> dict | None:
         st.session_state["_last_good_door_events"] = data
         return data
     return st.session_state.get("_last_good_door_events")
+
+
+def _read_oxygen_speed_override() -> bool:
+    payload = _load_json_safely(OXYGEN_OVERRIDE_PATH)
+    if not isinstance(payload, dict):
+        return False
+    try:
+        multiplier = float(payload.get("speed_multiplier", 1.0))
+    except (TypeError, ValueError):
+        return False
+    return multiplier >= 5.0
+
+
+def _write_oxygen_speed_override(enabled: bool) -> None:
+    payload = {"speed_multiplier": 5.0 if enabled else 1.0}
+    _atomic_write_json(OXYGEN_OVERRIDE_PATH, payload)
+
+
+def _toggle_override_state(key: str) -> None:
+    st.session_state[key] = not bool(st.session_state.get(key, False))
+
+
+def _toggle_oxygen_speed_override() -> None:
+    enabled = not bool(st.session_state.get("override_oxygen_speed_5x", False))
+    st.session_state["override_oxygen_speed_5x"] = enabled
+    _write_oxygen_speed_override(enabled)
+
+
+def _cycle_window_override() -> None:
+    current = st.session_state.get("override_window_state")
+    if current == "open":
+        st.session_state["override_window_state"] = "closed"
+    elif current == "closed":
+        st.session_state["override_window_state"] = None
+    else:
+        st.session_state["override_window_state"] = "open"
+
+
+def _get_effective_hour() -> int:
+    if st.session_state.get("override_hour_12am", False):
+        return 0
+    return time.localtime().tm_hour
+
+
+if "override_oxygen_speed_5x" not in st.session_state:
+    st.session_state["override_oxygen_speed_5x"] = _read_oxygen_speed_override()
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -445,7 +509,19 @@ with tab1:
             st.info("Waiting for readable current data (current_data.json is updating).")
             return
 
+        effective_hour = _get_effective_hour()
+
+        if st.session_state.get("override_gas_50", False):
+            data = dict(data)
+            data["air_contamination"] = 50
+            data["air_contamination_pct"] = 50
+            data["gas"] = 50
+
         door_data = _get_latest_door_current_data() or {}
+        window_override = st.session_state.get("override_window_state")
+        if window_override in {"open", "closed"}:
+            door_data = dict(door_data)
+            door_data["window_open"] = window_override == "open"
         is_window_open = bool(door_data.get("window_open", data.get("window_open", False)))
 
         outside_temp_c: float | None = None
@@ -465,6 +541,9 @@ with tab1:
             outside_is_raining = None
             outside_wind_speed_m_s = None
 
+        if st.session_state.get("override_outside_5c", False):
+            outside_temp_c = 5.0
+
         historical_data = _get_latest_historical_data()
 
         with st.container(border=True):
@@ -475,6 +554,7 @@ with tab1:
                 outside_temp_c=outside_temp_c,
                 outside_is_raining=outside_is_raining,
                 historical_data=historical_data,
+                hour_24=effective_hour,
             )
 
             for kind, message in notifications:
@@ -493,7 +573,7 @@ with tab1:
 
                 light_icon = _light_context_icon(
                     data.get("light"),
-                    hour_24=time.localtime().tm_hour,
+                    hour_24=effective_hour,
                 )
                 
                 fig = go.Figure(go.Indicator(
@@ -736,6 +816,27 @@ with tab1:
                 spacer_px = 55 if is_open else 0
                 if spacer_px:
                     st.markdown(f'<div style="height: {spacer_px}px;"></div>', unsafe_allow_html=True)
+
+        override_cols = st.columns([8, 1])
+        with override_cols[1]:
+            with st.container(border=True):
+                st.caption("Overrides")
+                label = "Out 5C" if st.session_state.get("override_outside_5c", False) else "Out"
+                st.button(label, key="override_outside_5c_btn", on_click=_toggle_override_state, args=("override_outside_5c",))
+                label = "12 AM" if st.session_state.get("override_hour_12am", False) else "12"
+                st.button(label, key="override_hour_12am_btn", on_click=_toggle_override_state, args=("override_hour_12am",))
+                label = "Gas 50" if st.session_state.get("override_gas_50", False) else "Gas"
+                st.button(label, key="override_gas_50_btn", on_click=_toggle_override_state, args=("override_gas_50",))
+                label = "O2 5x" if st.session_state.get("override_oxygen_speed_5x", False) else "O2"
+                st.button(label, key="override_oxygen_speed_5x_btn", on_click=_toggle_oxygen_speed_override)
+                window_state = st.session_state.get("override_window_state")
+                if window_state == "open":
+                    label = "Win O"
+                elif window_state == "closed":
+                    label = "Win C"
+                else:
+                    label = "Win"
+                st.button(label, key="override_window_state_btn", on_click=_cycle_window_override)
 
     _render_current_status()
 
