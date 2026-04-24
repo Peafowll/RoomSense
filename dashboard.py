@@ -484,35 +484,37 @@ with tab1:
                 """, unsafe_allow_html=True)
 
                 if is_window_open:
-                    metric_left, metric_right = st.columns(2)
-
                     predicted_temp = _predict_room_temp_after_minutes(
                         inside_temp_c=temp_value,
                         outside_temp_c=outside_temp_c,
                         wind_speed_m_s=outside_wind_speed_m_s,
                         t_minutes=10.0,
                     )
+                    
+                    minutes_to_22 = _time_to_reach_target_temp_minutes(
+                        inside_temp_c=temp_value,
+                        outside_temp_c=outside_temp_c,
+                        wind_speed_m_s=outside_wind_speed_m_s,
+                        target_temp_c=22.0,
+                    )
 
-                    with metric_left:
-                        if predicted_temp is not None:
-                            st.metric(
-                                "Predicted temp (IN 10 MIN)",
-                                f"{predicted_temp:.1f} °C",
-                            )
-                        else:
-                            st.metric("Predicted temp (IN 10 MIN)", "—")
+                    # Format values or fallback to "—"
+                    pred_str = f"{predicted_temp:.1f} °C" if predicted_temp is not None else "—"
+                    time_str = _format_minutes_duration(minutes_to_22) if minutes_to_22 is not None else "—"
 
-                    with metric_right:
-                        minutes_to_22 = _time_to_reach_target_temp_minutes(
-                            inside_temp_c=temp_value,
-                            outside_temp_c=outside_temp_c,
-                            wind_speed_m_s=outside_wind_speed_m_s,
-                            target_temp_c=22.0,
-                        )
-                        if minutes_to_22 is not None:
-                            st.metric("Time until 22°C", _format_minutes_duration(minutes_to_22))
-                        else:
-                            st.metric("Time until 22°C", "—")
+                    # Use flexbox with space-around to perfectly center and space the metrics
+                    st.markdown(f"""
+                        <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 1rem;">
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.9rem; margin-bottom: 0.2rem; font-weight: 600;">Predicted temp (IN 10 MIN)</p>
+                                <p style="font-size: 2.2rem; font-weight: 400; margin: 0;">{pred_str}</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <p style="font-size: 0.9rem; margin-bottom: 0.2rem; font-weight: 600;">Time until 22°C</p>
+                                <p style="font-size: 2.2rem; font-weight: 400; margin: 0;">{time_str}</p>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
                     if predicted_temp is None or minutes_to_22 is None:
                         st.caption("Prediction/time may be unavailable if outside temp or wind speed is missing, or if 22°C isn't reachable while the window is open.")
