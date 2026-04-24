@@ -36,6 +36,140 @@ def _atomic_write_json(path: Path, payload: dict) -> None:
             pass
 
 
+def _parse_iso_datetime(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    # Accept common UTC suffix.
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+
+
+def _infer_season(now: datetime, available: set[str]) -> str | None:
+    """Pick a season key that exists in bar_options.
+
+    Preference order:
+    - month-based guess (winter/spring/summer/autumn)
+    - any known alias present
+    - first available option (stable sort)
+    """
+    # Normalize keys once.
+    available_norm = {str(k).strip().lower() for k in available if isinstance(k, str)}
+    month = now.month
+
+    def pick(*candidates: str) -> str | None:
+        for cand in candidates:
+            if cand in available_norm:
+                return cand
+        return None
+
+    if month in (12, 1, 2):
+        guessed = pick("winter")
+    elif month in (3, 4, 5):
+        guessed = pick("spring")
+    elif month in (6, 7, 8):
+        guessed = pick("summer")
+    else:
+        guessed = pick("autumn", "fall")
+        if guessed is None:
+            # No autumn option in the file; prefer the closest warm season.
+            guessed = pick("summer", "spring", "winter")
+
+    if guessed is not None:
+        return guessed
+
+    # Stable fallback.
+    try:
+        return sorted(available_norm)[0]
+    except IndexError:
+        return None
+
+
+def _update_oxygen_bars(now: datetime) -> int | None:
+    """Update air oxygen amount based on minutes elapsed since last_updated_at.
+
+    Reads the payload from air_oxygen_bars.json (or fallback), subtracts
+    `decrease_per_min * elapsed_minutes` based on season options, then writes the
+    updated payload back to air_oxygen_bars.json.
+    """
+    source_payload: dict | None = None
+    for path in (AIR_OXYGENATION_PATH, AIR_OXYGENATION_FALLBACK_PATH):
+        payload = _load_json_file(path)
+        if isinstance(payload, dict) and payload:
+            source_payload = payload
+            break
+
+    if not isinstance(source_payload, dict) or not source_payload:
+        return None
+
+    bar_options = source_payload.get("bar_options")
+    if not isinstance(bar_options, dict) or not bar_options:
+        return None
+
+    # Season can be explicitly provided in the JSON; otherwise infer from date.
+    season_value = source_payload.get("season")
+    if isinstance(season_value, str):
+        season = season_value.strip().lower()
+    else:
+        season = _infer_season(now, set(bar_options.keys()))
+
+    option = None
+    if isinstance(season, str) and season in bar_options and isinstance(bar_options.get(season), dict):
+        option = bar_options.get(season)
+    else:
+        # Fallback: pick the first dict-like option.
+        for v in bar_options.values():
+            if isinstance(v, dict):
+                option = v
+                break
+
+    if not isinstance(option, dict):
+        return None
+
+    try:
+        decrease_per_min = float(option.get("decrease"))
+    except (TypeError, ValueError):
+        return None
+
+    try:
+        current_oxygen = float(source_payload.get("current_oxygen"))
+    except (TypeError, ValueError):
+        return None
+
+    last_updated_at = _parse_iso_datetime(source_payload.get("last_updated_at"))
+    if last_updated_at is None:
+        elapsed_minutes = 0.0
+    else:
+        elapsed_minutes = (now - last_updated_at).total_seconds() / 60.0
+        if elapsed_minutes < 0:
+            elapsed_minutes = 0.0
+
+    decrease_amount = decrease_per_min * elapsed_minutes
+    print(
+        f"[oxygen] season={season or 'unknown'} "
+        f"decrease_per_min={decrease_per_min} "
+        f"elapsed_min={elapsed_minutes:.3f} "
+        f"taken_off={decrease_amount:.3f} "
+        f"from={current_oxygen}"
+    )
+
+    updated_oxygen = current_oxygen - decrease_amount
+    updated_oxygen = max(0.0, min(100.0, updated_oxygen))
+
+    source_payload["current_oxygen"] = int(updated_oxygen)
+    source_payload["last_updated_at"] = now.isoformat()
+
+    # Persist back to the canonical file.
+    _atomic_write_json(AIR_OXYGENATION_PATH, source_payload)
+    return int(updated_oxygen)
+
+
 def _get_current_oxygenation() -> int | None:
     """Read current oxygenation (0-100) from air_oxygen(_ation)_bars.json."""
     for path in (AIR_OXYGENATION_PATH, AIR_OXYGENATION_FALLBACK_PATH):
@@ -79,7 +213,10 @@ def update_sensors():
             "light": lumina,
         }
 
-        oxygenation = _get_current_oxygenation()
+        # Update oxygen bars each time sensor data arrives (every ~2s).
+        oxygenation = _update_oxygen_bars(datetime.now())
+        if oxygenation is None:
+            oxygenation = _get_current_oxygenation()
         if oxygenation is not None:
             current_data["oxygenation"] = oxygenation
 
