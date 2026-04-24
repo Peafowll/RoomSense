@@ -73,5 +73,25 @@
         "window_open": true,
         "closed": false,
         "distanta": 70.56
+    },
+    "2026-04-24T20:03:55.723239": {
+        "window_open": false,
+        "closed": true,
+        "distanta": 8.26
+    },
+    "2026-04-24T20:04:01.133186": {
+        "window_open": true,
+        "closed": false,
+        "distanta": 61.15
+    },
+    "2026-04-24T20:04:02.200559": {
+        "window_open": false,
+        "closed": true,
+        "distanta": 12.72
+    },
+    "2026-04-24T20:04:08.722089": {
+        "window_open": true,
+        "closed": false,
+        "distanta": 36.02
     }
 }

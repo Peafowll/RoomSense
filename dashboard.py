@@ -88,30 +88,30 @@ def _build_notifications(
         except (TypeError, ValueError):
             return default
 
-    temp_c = _num(current_data.get("temp"))
     gas = _num(current_data.get("gas"))
-    humidity = _num(current_data.get("humidity"))
+    oxygenation = _num(current_data.get("oxygenation"))
+    light_lux = _num(current_data.get("light"))
 
     is_window_open = bool(door_data.get("window_open", current_data.get("window_open", False)))
 
-    if gas is not None:
+    # 1) Close window if it's open and it's cold outside.
+    if is_window_open and outside_temp_c is not None and outside_temp_c < 18:
+        notifications.append(("warning", "Outside is under 18°C. Close the window."))
+
+    # 2) Open window if it's closed and oxygenation drops.
+    if (not is_window_open) and oxygenation is not None and oxygenation < 30:
+        notifications.append(("warning", "Oxygenation is below 30. Open the window."))
+
+    # 3-4) Open window if it's closed and gas is high.
+    if (not is_window_open) and gas is not None:
         if gas > 50:
-            notifications.append(("error", "Hazardous air quality. Ventilate immediately."))
+            notifications.append(("error", "Gas is over 50. Open the window immediately."))
         elif gas > 30:
-            notifications.append(("warning", "Air quality is getting poor. Please open a window."))
+            notifications.append(("warning", "Gas is over 30. Open the window."))
 
-    if temp_c is not None:
-        if temp_c >= 26 and not is_window_open:
-            if outside_temp_c is None or outside_temp_c < temp_c:
-                notifications.append(("info", "Room is warm. Consider opening a window."))
-        if temp_c <= 18 and is_window_open:
-            notifications.append(("warning", "Warning: temperature is low. Close the window."))
-
-    if humidity is not None:
-        if humidity >= 65:
-            notifications.append(("info", "Humidity is high. Ventilation may help."))
-        elif humidity <= 25:
-            notifications.append(("info", "Humidity is low. Consider humidifying the room."))
+    # 5) Suggest turning off lights after 10pm when lux is high.
+    if light_lux is not None and light_lux > 100 and time.localtime().tm_hour >= 22:
+        notifications.append(("info", "It's after 10pm and the room is bright. Consider turning off the lights."))
 
     return notifications
 
@@ -233,32 +233,15 @@ with tab1:
                 historical_data=historical_data,
             )
 
-            manual_notifications = st.session_state.get("notifications")
-            if isinstance(manual_notifications, list):
-                for item in manual_notifications:
-                    if isinstance(item, str) and item.strip():
-                        notifications.append(("info", item.strip()))
-                    elif (
-                        isinstance(item, (tuple, list))
-                        and len(item) == 2
-                        and isinstance(item[0], str)
-                        and isinstance(item[1], str)
-                    ):
-                        kind, message = item
-                        if message.strip():
-                            notifications.append((kind, message.strip()))
-            if not notifications:
-                st.info("No notifications right now.")
-            else:
-                for kind, message in notifications:
-                    if kind == "error":
-                        st.error(message)
-                    elif kind == "warning":
-                        st.warning(message)
-                    elif kind == "success":
-                        st.success(message)
-                    else:
-                        st.info(message)
+            for kind, message in notifications:
+                if kind == "error":
+                    st.error(message)
+                elif kind == "warning":
+                    st.warning(message)
+                elif kind == "success":
+                    st.success(message)
+                else:
+                    st.info(message)
 
         # ==========================================
         # 4. DASHBOARD GRID
