@@ -200,6 +200,7 @@ with tab1:
                 st.markdown("### 🪟 WINDOW STATUS")
                 
                 is_open = data["window_open"]
+                oxygenation = 100 if is_open else 0
                 
                 if is_open:
                     icon = "🪟"
@@ -219,8 +220,12 @@ with tab1:
                             {text}
                         </span>
                     </div>
-                    <p style="text-align: center; color: #666;">{desc}</p>
                 """, unsafe_allow_html=True)
+
+                st.caption("Oxygenation")
+                st.progress(oxygenation)
+
+                st.markdown(f"<p style=\"text-align: center; color: #666;\">{desc}</p>", unsafe_allow_html=True)
 
     _render_current_status()
 
