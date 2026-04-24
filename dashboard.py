@@ -189,6 +189,101 @@ def _format_minutes_duration(minutes: float) -> str:
     return f"{minutes / 60.0:.1f} h"
 
 
+def _format_temp_delta_html(delta_c: float | None, *, font_size: str = "1.2rem") -> str:
+    """Return a colored (↑/↓) delta snippet like '(↓ 1.2°)'."""
+    if delta_c is None:
+        return ""
+    try:
+        delta = float(delta_c)
+    except (TypeError, ValueError):
+        return ""
+
+    if abs(delta) < 0.1:
+        return ""
+
+    if delta < 0:
+        arrow = "↓"
+        color = "#3b82f6"  # cooling
+    else:
+        arrow = "↑"
+        color = "#ef4444"  # warming
+
+    return (
+        f'<span style="color: {color}; font-size: {font_size}; margin-left: 0.35rem;">'
+        f'({arrow} {abs(delta):.1f}°)'
+        f"</span>"
+    )
+
+
+def _recent_trend_delta(
+    historical_data: dict | None,
+    *,
+    metric_key: str,
+    points_back: int = 5,
+) -> float | None:
+    """Estimate recent trend using last value vs a few points back."""
+    if not historical_data or not isinstance(historical_data, dict):
+        return None
+
+    series: list[float] = []
+    # Keys are ISO timestamps; lexicographic sort works.
+    for ts in sorted(historical_data.keys()):
+        row = historical_data.get(ts)
+        if not isinstance(row, dict):
+            continue
+        val = row.get(metric_key)
+        try:
+            if val is None:
+                continue
+            series.append(float(val))
+        except (TypeError, ValueError):
+            continue
+
+    if len(series) < 2:
+        return None
+
+    idx = max(0, len(series) - 1 - max(1, min(points_back, len(series) - 1)))
+    return series[-1] - series[idx]
+
+
+def _light_context_icon(light_lux: float | None, *, hour_24: int) -> str:
+    if light_lux is None:
+        return ""
+    try:
+        lux = float(light_lux)
+    except (TypeError, ValueError):
+        return ""
+
+    is_night = hour_24 >= 20 or hour_24 < 6
+    is_high = lux >= 150
+    if lux < 100:
+        return "🌙"
+    if is_high and is_night:
+        return "💡"
+    if is_high and (not is_night):
+        return "☀️"
+    # Mid-range: treat as low for scanability.
+    return "🌙"
+
+
+def _render_notification_banner(kind: str, html_message: str) -> None:
+    styles = {
+        "error": ("#fee2e2", "#991b1b", "#fecaca"),
+        "warning": ("#fef9c3", "#854d0e", "#fde68a"),
+        "success": ("#dcfce7", "#166534", "#bbf7d0"),
+        "info": ("#dbeafe", "#1e40af", "#bfdbfe"),
+    }
+    bg, fg, border = styles.get(kind, styles["info"])
+    st.markdown(
+        f"""
+        <div style="background: {bg}; color: {fg}; border: 1px solid {border}; padding: 0.6rem 0.9rem; border-radius: 0.6rem; margin: 0.35rem 0;">
+            <span style="font-size: 1.0rem;">{html_message}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _build_notifications(
     *,
     current_data: dict,
@@ -207,7 +302,14 @@ def _build_notifications(
         except (TypeError, ValueError):
             return default
 
-    gas = _num(current_data.get("gas"))
+    # Air contamination percentage: 0 is perfect, 60 is horrible.
+    # Keep backward compatibility with older payloads using `gas`.
+    contamination = _num(
+        current_data.get(
+            "air_contamination",
+            current_data.get("air_contamination_pct", current_data.get("gas")),
+        )
+    )
     oxygenation = _num(current_data.get("oxygenation"))
     light_lux = _num(current_data.get("light"))
 
@@ -215,26 +317,26 @@ def _build_notifications(
 
     # 0) Close window if it's open and it's raining outside.
     if is_window_open and outside_is_raining is True:
-        notifications.append(("error", "It's raining / It will rain outside and the window is open. It is recommended you close the window."))
+        notifications.append(("error", "🚨 It's <b>raining (or will rain)</b> outside and the window is <b>open</b>. It is recommended you close the window."))
 
     # 1) Close window if it's open and it's cold outside.
     if is_window_open and outside_temp_c is not None and outside_temp_c < 18:
-        notifications.append(("warning", "Outside is under 18°C. Consider closing the window to not decrease room temperature."))
+        notifications.append(("warning", "⚠️ Outside is <b>under 18°C</b>. Consider closing the window to not decrease room temperature."))
 
     # 2) Open window if it's closed and oxygenation drops.
     if (not is_window_open) and oxygenation is not None and oxygenation < 30:
-        notifications.append(("warning", "Oxygenation is below 30. Open the window for better focus."))
+        notifications.append(("warning", "⚠️ Oxygenation is <b>below 30</b>. Open the window for better focus."))
 
-    # 3-4) Open window if it's closed and gas is high.
-    if (not is_window_open) and gas is not None:
-        if gas > 50:
-            notifications.append(("error", "Gas is over 50. Open the window immediately."))
-        elif gas > 30:
-            notifications.append(("warning", "Gas is over 30. Open the window."))
+    # 3-4) Open window if it's closed and contamination is high.
+    if (not is_window_open) and contamination is not None:
+        if contamination > 40:
+            notifications.append(("error", "🚨 Air contamination is <b>over 40%</b>. Open the window immediately."))
+        elif contamination > 25:
+            notifications.append(("warning", "⚠️ Air contamination is <b>over 25%</b>. Open the window."))
 
     # 5) Suggest turning off lights after 10pm when lux is high.
     if light_lux is not None and light_lux > 100 and time.localtime().tm_hour >= 22:
-        notifications.append(("info", "It's after 10pm and the room is bright. Consider turning off the lights to avoid bad sleep quality."))
+        notifications.append(("info", "ℹ️ It's after <b>22:00</b> and the room is <b>bright</b>. Consider turning off the lights to avoid bad sleep quality."))
 
     return notifications
 
@@ -369,14 +471,7 @@ with tab1:
             )
 
             for kind, message in notifications:
-                if kind == "error":
-                    st.error(message)
-                elif kind == "warning":
-                    st.warning(message)
-                elif kind == "success":
-                    st.success(message)
-                else:
-                    st.info(message)
+                _render_notification_banner(kind, message)
 
         # ==========================================
         # 4. DASHBOARD GRID
@@ -388,11 +483,16 @@ with tab1:
         with col1:
             with st.container(border=True):
                 st.markdown("### ☀️ LIGHT LEVEL")
+
+                light_icon = _light_context_icon(
+                    data.get("light"),
+                    hour_24=time.localtime().tm_hour,
+                )
                 
                 fig = go.Figure(go.Indicator(
                     mode = "gauge+number",
                     value = data["light"],
-                    number = {'suffix': " LUX", 'font': {'size': 40, 'color': "#bbbbbb", 'weight': 'bold'}},
+                    number = {'prefix': f"{light_icon} ", 'suffix': " LUX", 'font': {'size': 40, 'color': "#bbbbbb", 'weight': 'bold'}},
                     gauge = {
                         'axis': {'range': [0, 500], 'tickwidth': 1, 'tickcolor': "darkblue"},
                         'bar': {'color': "#cbd5e1"},
@@ -417,29 +517,39 @@ with tab1:
         with col2:
             with st.container(border=True):
                 st.markdown("### ☁️ Gases in Room")
-                aqi = data["gas"]
-                
-                if aqi <= 10:
-                    status, color, desc = "EXCELLENT", "#22c55e", "Fresh air, low particulates"
-                elif aqi <= 30:
-                    status, color, desc = "MODERATE", "#eab308", "Acceptable air quality"
-                elif aqi <= 50:
-                    status, color, desc = "UNHEALTHY", "#f97316", "Noticeable pollution"
-                else:
-                    status, color, desc = "HAZARDOUS", "#ef4444", "Emergency conditions!."
+                # Air contamination percentage: 0 is perfect, 60 is horrible.
+                # Keep backwards-compat by reading from `gas` if no new key exists yet.
+                contamination_raw = data.get("air_contamination", data.get("air_contamination_pct", data.get("gas", 0)))
+                try:
+                    contamination = float(contamination_raw)
+                except (TypeError, ValueError):
+                    contamination = 0.0
+                contamination = max(0.0, min(60.0, contamination))
 
-                custom_progress_bar(
-                    current = aqi,
-                    min_val = 0,
-                    max_val = 100,
-                    color = color,
-                    height = "30px"
+                if contamination <= 10:
+                    status, color, desc, track = "PERFECT", "#22c55e", "Clean air", "#dcfce7"
+                elif contamination <= 25:
+                    status, color, desc, track = "GOOD", "#eab308", "Slight contamination", "#fef9c3"
+                elif contamination <= 40:
+                    status, color, desc, track = "POOR", "#f97316", "Noticeable contamination", "#ffedd5"
+                else:
+                    status, color, desc, track = "HORRIBLE", "#ef4444", "High contamination", "#fee2e2"
+
+                custom_progress_bar_tinted(
+                    current=contamination,
+                    min_val=0,
+                    max_val=60,
+                    fill_color=color,
+                    track_color=track,
+                    height="30px",
+                    min_visible_fill_pct=2,
+                    label=f"{contamination:.0f}%",
                 )
                 
                 st.markdown(f"""
                     <div style="display: flex; align-items: center; height: 165px; justify-content: center; flex-direction: column;">
                         <h1 style="color: {color}; font-size: 2.5rem; margin: 0;text-align: center">{status}</h1>
-                        <p style="font-size: 1.2rem; color: #555; font-weight: bold; text-align: center">AQI {aqi}</p>
+                        <p style="font-size: 1.2rem; color: #555; font-weight: bold; text-align: center">Contamination {contamination:.0f}%</p>
                     </div>
                     <p style="text-align: center; color: #666;">{desc}</p>
                 """, unsafe_allow_html=True)
@@ -475,9 +585,12 @@ with tab1:
                     temp_value = 0.0
                 temp_color = _temperature_to_color(temp_value)
 
+                temp_trend_delta = _recent_trend_delta(historical_data, metric_key="temp", points_back=5)
+                temp_trend_html = _format_temp_delta_html(temp_trend_delta, font_size="1.6rem")
+
                 st.markdown(f"""
                     <div style="height: 180px; display: flex; align-items: center; justify-content: center;">
-                        <h1 style="font-size: 4.5rem; margin: 0; color: {temp_color};">{data["temp"]} °C</h1>
+                        <h1 style="font-size: 4.5rem; margin: 0; color: {temp_color};">{data["temp"]} °C{temp_trend_html}</h1>
                     </div>
                     {outside_temp_html}
                     {outside_rain_html}
@@ -502,16 +615,29 @@ with tab1:
                     pred_str = f"{predicted_temp:.1f} °C" if predicted_temp is not None else "—"
                     time_str = _format_minutes_duration(minutes_to_22) if minutes_to_22 is not None else "—"
 
+                    pred_delta_html = (
+                        _format_temp_delta_html(
+                            (predicted_temp - temp_value) if predicted_temp is not None else None,
+                            font_size="1.2rem",
+                        )
+                    )
+
+                    time_icon = ""
+                    if time_str != "—":
+                        # If we're above target, it's a cooling trend toward 22°C.
+                        time_icon = "📉" if temp_value > 22.0 else "⏳"
+                    time_value_html = f"{time_icon} {time_str}" if time_icon else time_str
+
                     # Use flexbox with space-around to perfectly center and space the metrics
                     st.markdown(f"""
                         <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 1rem;">
                             <div style="text-align: center;">
                                 <p style="font-size: 0.9rem; margin-bottom: 0.2rem; font-weight: 600;">Predicted temp (IN 10 MIN)</p>
-                                <p style="font-size: 2.2rem; font-weight: 400; margin: 0;">{pred_str}</p>
+                                <p style="font-size: 2.2rem; font-weight: 400; margin: 0;">{pred_str}{pred_delta_html}</p>
                             </div>
                             <div style="text-align: center;">
                                 <p style="font-size: 0.9rem; margin-bottom: 0.2rem; font-weight: 600;">Time until 22°C</p>
-                                <p style="font-size: 2.2rem; font-weight: 400; margin: 0;">{time_str}</p>
+                                <p style="font-size: 2.2rem; font-weight: 400; margin: 0;">{time_value_html}</p>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
@@ -531,11 +657,33 @@ with tab1:
                 if oxygenation is None:
                     oxygenation = 100 if is_open else 0
                 
+                env_note_html = ""
+
                 if is_open:
                     icon = "🪟"
-                    bg_color = "#70f16c"
+                    violates_env = (outside_is_raining is True) or (
+                        outside_temp_c is not None and outside_temp_c < 18
+                    )
+                    if violates_env and outside_is_raining is True:
+                        bg_color = "#f97316"  # raining -> stronger warning
+                        desc = "Main window open (unfavorable: rain)."
+                        env_note_html = (
+                            '<div style="margin-top: 0.35rem; font-weight: 700; color: #f97316; text-align: center;">'
+                            'Unfavorable: <b>raining</b> outside'
+                            "</div>"
+                        )
+                    elif violates_env:
+                        bg_color = "#eab308"  # cold -> warning
+                        desc = "Main window open (unfavorable: cold outside)."
+                        env_note_html = (
+                            '<div style="margin-top: 0.35rem; font-weight: 700; color: #eab308; text-align: center;">'
+                            'Unfavorable: outside is <b>under 18°C</b>'
+                            "</div>"
+                        )
+                    else:
+                        bg_color = "#22c55e"
+                        desc = "Main window open."
                     text = "OPEN"
-                    desc = "Main window open."
                 else:
                     icon = "🪟"
                     bg_color = "#eb5353"
@@ -545,9 +693,12 @@ with tab1:
                 st.markdown(f"""
                     <div style="display: flex; align-items: center; justify-content: center; height: 180px; gap: 20px;">
                         <span style="font-size: 5rem;">{icon}</span>
-                        <span style="background-color: {bg_color}; color: white; padding: 10px 25px; border-radius: 25px; font-weight: bold; font-size: 1.5rem; letter-spacing: 1px;">
-                            {text}
-                        </span>
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <span style="background-color: {bg_color}; color: white; padding: 10px 25px; border-radius: 25px; font-weight: bold; font-size: 1.5rem; letter-spacing: 1px;">
+                                {text}
+                            </span>
+                            {env_note_html}
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
