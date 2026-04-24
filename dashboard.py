@@ -400,8 +400,8 @@ def _get_outside_weather(location: tuple):
     return get_current_weather(location)
 
 
-#OUTSIDE_LOCATION = (45.6486, 25.6061)
-OUTSIDE_LOCATION = (32.7816, -96.7977) #dallas
+OUTSIDE_LOCATION = (45.6486, 25.6061)
+#OUTSIDE_LOCATION = (32.7816, -96.7977) #dallas
 
 
 st.markdown("""
