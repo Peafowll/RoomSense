@@ -46,6 +46,3 @@ custom_progress_bar(
     max_val = 100,
     height = "25px"
 )
-
-
-
