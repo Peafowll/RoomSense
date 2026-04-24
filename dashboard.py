@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 from asset_classes import *
 from utils import get_current_weather
+
 st.set_page_config(page_title="RoomSense", page_icon="🏢", layout="wide")
 
 
@@ -312,6 +313,7 @@ def _build_notifications(
     )
     oxygenation = _num(current_data.get("oxygenation"))
     light_lux = _num(current_data.get("light"))
+    inside_temp = _num(current_data.get("temp"))
 
     is_window_open = bool(door_data.get("window_open", current_data.get("window_open", False)))
 
@@ -319,9 +321,13 @@ def _build_notifications(
     if is_window_open and outside_is_raining is True:
         notifications.append(("error", "🚨 It's <b>raining (or will rain)</b> outside and the window is <b>open</b>. It is recommended you close the window."))
 
-    # 1) Close window if it's open and it's cold outside.
-    if is_window_open and outside_temp_c is not None and outside_temp_c < 18:
-        notifications.append(("warning", "⚠️ Outside is <b>under 18°C</b>. Consider closing the window to not decrease room temperature."))
+    # 1) Close window if it's open and it's cold outside (AND colder than inside).
+    if is_window_open and outside_temp_c is not None:
+        if inside_temp is not None:
+            if outside_temp_c < 18 and outside_temp_c < inside_temp:
+                notifications.append(("warning", "⚠️ Outside is <b>colder than inside</b>. Consider closing the window to not decrease room temperature."))
+        elif outside_temp_c < 18:
+            notifications.append(("warning", "⚠️ Outside is <b>under 18°C</b>. Consider closing the window to not decrease room temperature."))
 
     # 2) Open window if it's closed and oxygenation drops.
     if (not is_window_open) and oxygenation is not None and oxygenation < 30:
@@ -394,9 +400,9 @@ def _get_outside_weather(location: tuple):
     return get_current_weather(location)
 
 
-OUTSIDE_LOCATION = (45.6486, 25.6061)
-#OUTSIDE_LOCATION = (4.6243, -74.0636) # rain
-#OUTSIDE_LOCATION = (32.7815, 96.7977) # dallas
+#OUTSIDE_LOCATION = (45.6486, 25.6061)
+OUTSIDE_LOCATION = (32.7816, -96.7977) #dallas
+
 
 st.markdown("""
     <style>
@@ -507,19 +513,12 @@ with tab1:
                 
                 fig.update_layout(height=220, margin=dict(l=20, r=20, t=20, b=20))
                 st.plotly_chart(fig, width="stretch")
-                
-
-                # if data["light"] < 100:
-                #     st.markdown("<p style='text-align: center; color: #666;'>Dim, artificial light</p>", unsafe_allow_html=True)
-                # else:
-                #     st.markdown("<p style='text-align: center; color: #666;'>Bright, natural</p>", unsafe_allow_html=True)
 
         # --- CARD 2: AIR QUALITY ---
         with col2:
             with st.container(border=True):
                 st.markdown("### ☁️ Gases in Room")
                 # Air contamination percentage: 0 is perfect, 60 is horrible.
-                # Keep backwards-compat by reading from `gas` if no new key exists yet.
                 contamination_raw = data.get("air_contamination", data.get("air_contamination_pct", data.get("gas", 0)))
                 try:
                     contamination = float(contamination_raw)
@@ -625,8 +624,8 @@ with tab1:
 
                     time_icon = ""
                     if time_str != "—":
-                        # If we're above target, it's a cooling trend toward 22°C.
-                        time_icon = "📉" if temp_value > 22.0 else "⏳"
+                        # If we're above target, it's a cooling trend toward 22°C. Else warming.
+                        time_icon = "📉" if temp_value > 22.0 else "📈"
                     time_value_html = f"{time_icon} {time_str}" if time_icon else time_str
 
                     # Use flexbox with space-around to perfectly center and space the metrics
@@ -662,10 +661,10 @@ with tab1:
 
                 if is_open:
                     icon = "🪟"
-                    violates_env = (outside_is_raining is True) or (
-                        outside_temp_c is not None and outside_temp_c < 18
-                    )
-                    if violates_env and outside_is_raining is True:
+                    is_colder_outside = (outside_temp_c is not None and outside_temp_c < 18 and outside_temp_c < temp_value)
+                    violates_env = (outside_is_raining is True) or is_colder_outside
+
+                    if outside_is_raining is True:
                         bg_color = "#f97316"  # raining -> stronger warning
                         desc = "Main window open (unfavorable: rain)."
                         env_note_html = (
@@ -673,17 +672,22 @@ with tab1:
                             'Unfavorable: <b>raining</b> outside'
                             "</div>"
                         )
-                    elif violates_env:
+                    elif is_colder_outside:
                         bg_color = "#eab308"  # cold -> warning
-                        desc = "Main window open (unfavorable: cold outside)."
+                        desc = "Main window open (unfavorable: colder outside)."
                         env_note_html = (
                             '<div style="margin-top: 0.35rem; font-weight: 700; color: #eab308; text-align: center;">'
-                            'Unfavorable: outside is <b>under 18°C</b>'
+                            'Unfavorable: outside is <b>colder than inside</b>'
                             "</div>"
                         )
                     else:
                         bg_color = "#22c55e"
                         desc = "Main window open."
+                        env_note_html = (
+                        '<div style="margin-top: 0.35rem; font-weight: 700; color: #9ca3af; text-align: center;">'
+                        'Room is being aired out!'
+                        '</div>'
+                        )
                     text = "OPEN"
                 else:
                     icon = "🪟"
