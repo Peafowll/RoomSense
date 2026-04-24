@@ -97,7 +97,7 @@ def _build_notifications(
 
     # 0) Close window if it's open and it's raining outside.
     if is_window_open and outside_is_raining is True:
-        notifications.append(("error", "It's raining outside and the window is open. Close the window."))
+        notifications.append(("error", "It's raining / It will rain outside and the window is open. It is recommended you close the window."))
 
     # 1) Close window if it's open and it's cold outside.
     if is_window_open and outside_temp_c is not None and outside_temp_c < 18:
@@ -175,7 +175,7 @@ def _get_outside_weather(location: tuple):
 
 
 OUTSIDE_LOCATION = (45.6486, 25.6061)
-#OUTSIDE_LOCATION = (4.6243, -74.0636)
+#OUTSIDE_LOCATION = (4.6243, -74.0636) raining for testing
 
 st.markdown("""
     <style>
