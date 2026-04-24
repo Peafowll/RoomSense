@@ -152,5 +152,12 @@
         "gas": 0,
         "light": 228.57,
         "window_open": false
+    },
+    "2026-04-24T17:01:34.686877": {
+        "temp": 23.6,
+        "humidity": 29.4,
+        "gas": 0,
+        "light": 248.47,
+        "window_open": false
     }
 }

@@ -58,6 +58,20 @@ def update_sensors():
         print(f"Eroare: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/door', methods=['POST'])
+def door():
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"status": "error", "message": "No JSON data received"}), 400
+        
+        print(data)
+        return jsonify({"status": "success", "message": "Data received"}), 200
+    except Exception as e:
+        print(f"Eroare: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({
