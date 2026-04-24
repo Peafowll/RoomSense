@@ -15,6 +15,7 @@ DOOR_CURRENT_PATH = Path(__file__).with_name("door_current.json")
 DOOR_EVENTS_PATH = Path(__file__).with_name("door_events.json")
 AIR_OXYGENATION_PATH = Path(__file__).with_name("air_oxygen_bars.json")
 AIR_OXYGENATION_FALLBACK_PATH = Path(__file__).with_name("air_oxygenation_bars.json")
+OXYGEN_OVERRIDE_PATH = Path(__file__).with_name("oxygen_override.json")
 
 
 def _load_json_file(path: Path) -> dict:
@@ -34,6 +35,19 @@ def _atomic_write_json(path: Path, payload: dict) -> None:
             tmp_path.unlink(missing_ok=True)
         except Exception:
             pass
+
+
+def _get_oxygen_speed_multiplier() -> float:
+    payload = _load_json_file(OXYGEN_OVERRIDE_PATH)
+    if not isinstance(payload, dict):
+        return 1.0
+    try:
+        multiplier = float(payload.get("speed_multiplier", 1.0))
+    except (TypeError, ValueError):
+        return 1.0
+    if multiplier <= 0:
+        return 1.0
+    return multiplier
 
 
 def _parse_iso_datetime(value: object) -> datetime | None:
@@ -174,12 +188,14 @@ def _update_oxygen_bars(now: datetime, *, window_open: bool) -> int | None:
         if elapsed_minutes < 0:
             elapsed_minutes = 0.0
 
-    delta = rate_per_min * elapsed_minutes
+    multiplier = _get_oxygen_speed_multiplier()
+    delta = rate_per_min * elapsed_minutes * multiplier
     direction = "+" if window_open else "-"
     print(
         f"[oxygen] season={season or 'unknown'} "
         f"window_open={window_open} "
         f"{rate_key}_per_min={rate_per_min} "
+        f"multiplier={multiplier} "
         f"elapsed_min={elapsed_minutes:.3f} "
         f"delta={direction}{delta:.3f} "
         f"from={current_oxygen}"
