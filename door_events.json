@@ -13,5 +13,15 @@
         "window_open": true,
         "closed": false,
         "distanta": 57.06
+    },
+    "2026-04-24T18:41:39.731932": {
+        "window_open": false,
+        "closed": true,
+        "distanta": 16.13
+    },
+    "2026-04-24T18:41:40.820448": {
+        "window_open": true,
+        "closed": false,
+        "distanta": 56.32
     }
 }

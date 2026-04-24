@@ -13,6 +13,8 @@ last_data = None
 CURRENT_DATA_PATH = Path(__file__).with_name("current_data.json")
 DOOR_CURRENT_PATH = Path(__file__).with_name("door_current.json")
 DOOR_EVENTS_PATH = Path(__file__).with_name("door_events.json")
+AIR_OXYGENATION_PATH = Path(__file__).with_name("air_oxygen_bars.json")
+AIR_OXYGENATION_FALLBACK_PATH = Path(__file__).with_name("air_oxygenation_bars.json")
 
 
 def _load_json_file(path: Path) -> dict:
@@ -32,6 +34,22 @@ def _atomic_write_json(path: Path, payload: dict) -> None:
             tmp_path.unlink(missing_ok=True)
         except Exception:
             pass
+
+
+def _get_current_oxygenation() -> int | None:
+    """Read current oxygenation (0-100) from air_oxygen(_ation)_bars.json."""
+    for path in (AIR_OXYGENATION_PATH, AIR_OXYGENATION_FALLBACK_PATH):
+        payload = _load_json_file(path)
+        if not isinstance(payload, dict):
+            continue
+        value = payload.get("current_oxygen")
+        try:
+            value_num = int(value)
+        except (TypeError, ValueError):
+            continue
+        return max(0, min(100, value_num))
+
+    return None
 
 @app.route('/update', methods=['POST'])
 def update_sensors():
@@ -60,6 +78,10 @@ def update_sensors():
             "gas": gaz,
             "light": lumina,
         }
+
+        oxygenation = _get_current_oxygenation()
+        if oxygenation is not None:
+            current_data["oxygenation"] = oxygenation
 
         _atomic_write_json(CURRENT_DATA_PATH, current_data)
 

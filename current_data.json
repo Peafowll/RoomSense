@@ -2,5 +2,6 @@
     "temp": 23.7,
     "humidity": 29.5,
     "gas": 0,
-    "light": 183.73
+    "light": 183.73,
+    "oxygenation" : 20
 }

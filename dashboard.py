@@ -222,7 +222,9 @@ with tab1:
                 # Door/window tracking is stored separately (door_current.json),
                 # but keep a soft fallback for older files.
                 is_open = bool(door_data.get("window_open", data.get("window_open", False)))
-                oxygenation = 100 if is_open else 0
+                oxygenation = data.get("oxygenation")
+                if oxygenation is None:
+                    oxygenation = 100 if is_open else 0
                 
                 if is_open:
                     icon = "🪟"
@@ -285,9 +287,6 @@ with tab2:
         df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
         df = df.dropna(subset=["timestamp"]).sort_values("timestamp")
 
-        # Door/window tracking is stored separately in door_events.json.
-        # If present, prefer the reconstructed series (even if the legacy
-        # historical_data.json still contains an old window_open column).
         door_events = _get_latest_door_events_data() or {}
         if isinstance(door_events, dict) and len(door_events) > 0:
             door_df = pd.DataFrame.from_dict(door_events, orient="index")
@@ -323,7 +322,8 @@ with tab2:
             ("temp", "🌡️ Temperature", "#f97316", True),
             ("humidity", "💧 Humidity", "#3b82f6", True),
             ("gas", "☁️ Gas", "#a855f7", True),
-            ("light", "☀️ Light", "#eab308", True)
+            ("light", "☀️ Light", "#eab308", True),
+            ("oxygenation", "🫁 Oxygenation", "#22c55e", True),
         ]
 
         available_specs = [spec for spec in metric_specs if spec[0] in df.columns]
