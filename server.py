@@ -6,7 +6,7 @@ from utils import record_historical_data
 
 app = Flask(__name__)
 
-last_data = {}
+update_count = 0
 
 @app.route('/update', methods=['POST'])
 def update_sensors():
@@ -40,9 +40,10 @@ def update_sensors():
         with open("current_data.json", "w") as f:
             json.dump(current_data, f, indent=4)
 
-        now = datetime.now()
-
-        record_historical_data(current_data, now)
+        update_count += 1
+        if update_count % 5:
+            now = datetime.now()
+            record_historical_data(current_data, now)
 
         global last_data
         last_data = data

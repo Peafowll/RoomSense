@@ -1,6 +1,6 @@
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def record_historical_data(data : dict, timestamp : datetime):
     """
@@ -15,11 +15,22 @@ def record_historical_data(data : dict, timestamp : datetime):
     except (FileNotFoundError, json.JSONDecodeError):
         loaded_data = {}
 
-    loaded_data[str(timestamp)] = data
+    loaded_data[timestamp.isoformat()] = data
 
+    cutoff_time = timestamp - timedelta(days=2)
+    filtered_data = {}
+
+    for time_str, val in loaded_data.items():
+        try:
+            record_time = datetime.fromisoformat(time_str)
+            if record_time >= cutoff_time:
+                filtered_data[time_str] = val
+                
+        except ValueError:
+            continue
 
     with open("historical_data.json", "w") as historical_file:
-        json.dump(loaded_data, historical_file, indent=4)
+        json.dump(filtered_data, historical_file, indent=4)
 
 
 def get_current_weather(location : tuple):
