@@ -395,7 +395,8 @@ def _get_outside_weather(location: tuple):
 
 
 OUTSIDE_LOCATION = (45.6486, 25.6061)
-#OUTSIDE_LOCATION = (4.6243, -74.0636) raining for testing
+#OUTSIDE_LOCATION = (4.6243, -74.0636) # rain
+#OUTSIDE_LOCATION = (32.7815, 96.7977) # dallas
 
 st.markdown("""
     <style>
@@ -505,7 +506,7 @@ with tab1:
                 ))
                 
                 fig.update_layout(height=220, margin=dict(l=20, r=20, t=20, b=20))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
                 
 
                 # if data["light"] < 100:
@@ -689,6 +690,11 @@ with tab1:
                     bg_color = "#eb5353"
                     text = "CLOSED"
                     desc = "Main window closed."
+                    env_note_html = (
+                        '<div style="margin-top: 0.35rem; font-weight: 700; color: #9ca3af; text-align: center;">'
+                        'Environment isolated'
+                        '</div>'
+                    )
                     
                 st.markdown(f"""
                     <div style="display: flex; align-items: center; justify-content: center; height: 180px; gap: 20px;">
@@ -720,6 +726,12 @@ with tab1:
                 )
 
                 st.markdown(f"<p style=\"text-align: center; color: #666;\">{desc}</p>", unsafe_allow_html=True)
+
+                # Temperature grows when the window is open (prediction/time row).
+                # Add a modest spacer here so Window Status matches without overshooting.
+                spacer_px = 55 if is_open else 0
+                if spacer_px:
+                    st.markdown(f'<div style="height: {spacer_px}px;"></div>', unsafe_allow_html=True)
 
     _render_current_status()
 

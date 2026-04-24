@@ -187,5 +187,5 @@ def display_historical_graph(df, date_column, metric_column, title, line_color="
     if y_range is not None:
         fig.update_yaxes(range=y_range)
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
