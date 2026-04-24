@@ -12,6 +12,7 @@ st.set_page_config(page_title="My Apartment Status", page_icon="🏢", layout="w
 
 REFRESH_INTERVAL_MS = 3000
 CURRENT_DATA_PATH = Path(__file__).with_name("current_data.json")
+HISTORICAL_DATA_PATH = Path(__file__).with_name("historical_data.json")
 
 
 def _load_json_safely(path: Path, *, retries: int = 5, delay_s: float = 0.05) -> dict | None:
@@ -33,6 +34,16 @@ def _get_latest_current_data() -> dict | None:
         return data
 
     return st.session_state.get("_last_good_current_data")
+
+
+def _get_latest_historical_data() -> dict | None:
+    """Return the latest readable historical data, falling back to last good value."""
+    data = _load_json_safely(HISTORICAL_DATA_PATH)
+    if data is not None:
+        st.session_state["_last_good_historical_data"] = data
+        return data
+
+    return st.session_state.get("_last_good_historical_data")
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -213,22 +224,46 @@ with tab1:
     _render_current_status()
 
 with tab2:
-    st.write("tab 2 yippie")
+    historical_data = _get_latest_historical_data()
+    if not historical_data:
+        st.info("No readable historical data yet (historical_data.json may still be updating).")
+    else:
+        df = pd.DataFrame.from_dict(historical_data, orient="index")
+        df.index.name = "timestamp"
+        df = df.reset_index()
 
-    with open("dummy_temp_history.json", "r") as file:
-        temp_history_data = json.load(file)
+        df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+        df = df.dropna(subset=["timestamp"]).sort_values("timestamp")
 
-    df = pd.DataFrame(temp_history_data)
+        if "window_open" in df.columns:
+            df["window_open"] = df["window_open"].astype(int)
 
-    st.subheader("Raw Data Preview")
-    st.dataframe(df) 
+        metric_specs: list[tuple[str, str, str, bool]] = [
+            ("temp", "🌡️ Temperature", "#f97316", True),
+            ("humidity", "💧 Humidity", "#3b82f6", True),
+            ("gas", "☁️ Gas", "#a855f7", True),
+            ("light", "☀️ Light", "#eab308", True),
+            ("window_open", "🪟 Window Open (0/1)", "#22c55e", False),
+        ]
 
-    display_historical_graph(
-        df = df,
-        date_column = "timestamp",
-        metric_column = "temperature",
-        title = "Historical Temp Data",
-        line_color = "#f97316",
-        fill_area = True,
-        y_range=[0, 50]
-    )
+        # Only render metrics that are present in the file.
+        available_specs = [spec for spec in metric_specs if spec[0] in df.columns]
+        if not available_specs:
+            st.warning("historical_data.json has no recognized measurement columns.")
+        else:
+            col_left, col_right = st.columns(2)
+            for idx, (metric_col, title, color, fill_area) in enumerate(available_specs):
+                target_col = col_left if idx % 2 == 0 else col_right
+                with target_col:
+                    with st.container(border=True):
+                        display_historical_graph(
+                            df=df,
+                            date_column="timestamp",
+                            metric_column=metric_col,
+                            title=title,
+                            line_color=color,
+                            fill_area=fill_area,
+                        )
+
+            with st.expander("Raw historical data"):
+                st.dataframe(df, use_container_width=True)
