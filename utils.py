@@ -28,7 +28,7 @@ def get_current_weather(location : tuple):
     Params :
         location (tuple) : A tuple containing the latitude and logitude of the location you want to check.
     Returns :
-        The temperature in Celsius and wind speed at the location.
+        The temperature in Celsius and wind speed (in km/h) at the location.
     
     """
     url = "https://api.open-meteo.com/v1/forecast"

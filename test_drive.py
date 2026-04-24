@@ -1,8 +1,18 @@
 import streamlit as st
 import plotly.graph_objects as go
 import json
+import pandas as pd
 from asset_classes import *
+from utils import get_current_weather
 st.set_page_config(page_title="My Apartment Status", page_icon="🏢", layout="wide")
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _get_outside_weather(location: tuple):
+    return get_current_weather(location)
+
+
+OUTSIDE_LOCATION = (45.6486, 25.6061)
 
 st.markdown("""
     <style>
@@ -105,12 +115,28 @@ with tab1:
     with col3:
         with st.container(border=True):
             st.markdown("### 🌡️ TEMPERATURE")
+
+            outside_temp_c = None
+            try:
+                outside_weather = _get_outside_weather(OUTSIDE_LOCATION)
+                if outside_weather is not None:
+                    outside_temp_c = outside_weather[0]
+            except Exception:
+                outside_temp_c = None
+            if outside_temp_c is not None:
+                temp_diff = data["temp"] - outside_temp_c
+            
+                if temp_diff >= 0:
+                    outside_temp_html = f'<p style="text-align: center; color: #666; font-size: 1.1rem; margin: 0;">{temp_diff:.1f}° warmer than outside ({outside_temp_c}°C)</p>'
+                else:
+                    outside_temp_html = f'<p style="text-align: center; color: #666; font-size: 1.1rem; margin: 0;">{abs(temp_diff):.1f}° colder than outside ({outside_temp_c}°C)</p>'
             
             st.markdown(f"""
                 <div style="height: 180px; display: flex; align-items: center; justify-content: center;">
-                    <h1 style="font-size: 4.5rem; margin: 0; color: #ffffff;">{data["temp"]} °C</h1>
+                    <h1 style="font-size: 4.5rem; margin: 0; color: #333;">{data["temp"]} °C</h1>
                 </div>
-                <p style="text-align: center; color: ##ffffff;">Stable in the last hour</p>
+                {outside_temp_html}
+                <p style="text-align: center; color: #666;">Stable in the last hour</p>
             """, unsafe_allow_html=True)
 
     # --- CARD 4: DOOR STATUS ---
