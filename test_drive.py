@@ -63,11 +63,9 @@ tab1, tab2 = st.tabs(["📊 Current Status", "📈 Historical Data"])
 # ==========================================
 
 with tab1:
-    # Only rerun this tab's content every 3 seconds (no browser refresh).
     if hasattr(st, "fragment"):
         render_decorator = st.fragment(run_every=f"{REFRESH_INTERVAL_MS}ms")
     else:
-        # Fallback for older Streamlit: this triggers a script rerun (still not a browser reload).
         try:
             from streamlit_autorefresh import st_autorefresh  # type: ignore
 

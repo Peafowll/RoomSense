@@ -2,39 +2,33 @@ from flask import Flask, request, jsonify
 import json
 import os
 from datetime import datetime
+from utils import record_historical_data
 
 app = Flask(__name__)
 
-# Variabilă globală pentru a stoca ultimele date (opțional)
 last_data = {}
 
 @app.route('/update', methods=['POST'])
 def update_sensors():
     try:
-        # Extragem datele JSON trimise de ESP32
         data = request.get_json()
         
         if not data:
             return jsonify({"status": "error", "message": "No JSON data received"}), 400
 
-        # Extragem valorile individuale trimise de ESP32
         temp = data.get('temperature', 0)
         hum = data.get('humidity', 0)
         gaz = data.get('Gaz', 0)
         lumina = data.get('Lumina', 0)
 
-        # Afișăm datele în consola 
         print("\n--- Date Noi Primite ---")
         print(f"Temperatură: {temp}°C")
         print(f"Umiditate:   {hum}%")
         print(f"Gaz (MQ3):   {gaz}%")
         print(f"Lumină:      {lumina:.2f} Lux")
         print("------------------------")
-
-        # ==========================================
-        # 1. SALVARE DATE CURENTE (Pentru TAB 1)
-        # ==========================================
-        # Traducem cheile de la ESP32 în cheile pe care le așteaptă Streamlit
+        
+        # Data translate
         current_data = {
             "temp": temp,
             "humidity": hum,
@@ -46,10 +40,10 @@ def update_sensors():
         with open("current_data.json", "w") as f:
             json.dump(current_data, f, indent=4)
 
+        now = datetime.now()
 
-        # TODO : add to history
+        record_historical_data(current_data, now)
 
-        # Actualizare variabilă globală
         global last_data
         last_data = data
 
