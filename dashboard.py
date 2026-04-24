@@ -17,6 +17,60 @@ DOOR_CURRENT_PATH = Path(__file__).with_name("door_current.json")
 DOOR_EVENTS_PATH = Path(__file__).with_name("door_events.json")
 
 
+def _clamp(value: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, value))
+
+
+def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    raw = hex_color.strip().lstrip("#")
+    if len(raw) != 6:
+        raise ValueError(f"Expected 6-digit hex color, got: {hex_color!r}")
+    return (int(raw[0:2], 16), int(raw[2:4], 16), int(raw[4:6], 16))
+
+
+def _rgb_to_hex(rgb: tuple[int, int, int]) -> str:
+    r, g, b = rgb
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def _lerp(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
+
+
+def _value_to_gradient_color(
+    value: float,
+    min_val: float,
+    max_val: float,
+    start_hex: str,
+    end_hex: str,
+) -> str:
+    if max_val == min_val:
+        return end_hex
+    t = (value - min_val) / (max_val - min_val)
+    t = _clamp(t, 0.0, 1.0)
+    sr, sg, sb = _hex_to_rgb(start_hex)
+    er, eg, eb = _hex_to_rgb(end_hex)
+    rgb = (
+        int(round(_lerp(sr, er, t))),
+        int(round(_lerp(sg, eg, t))),
+        int(round(_lerp(sb, eb, t))),
+    )
+    return _rgb_to_hex(rgb)
+
+
+def _temperature_to_color(temp_c: float) -> str:
+    """Map temperature (°C) to a readable color.
+
+    Cold -> blue, comfortable -> green, hot -> red.
+    """
+    cold = 16.0
+    comfy = 22.0
+    hot = 30.0
+    if temp_c <= comfy:
+        return _value_to_gradient_color(temp_c, cold, comfy, "#3b82f6", "#22c55e")
+    return _value_to_gradient_color(temp_c, comfy, hot, "#22c55e", "#ef4444")
+
+
 def _load_json_safely(path: Path, *, retries: int = 5, delay_s: float = 0.05) -> dict | None:
     """Read JSON that may be rewritten frequently (avoid crashes on partial writes)."""
     for attempt in range(retries):
@@ -206,9 +260,15 @@ with tab1:
                     else:
                         outside_temp_html = f'<p style="text-align: center; color: #666; font-size: 1.1rem; margin: 0;">{abs(temp_diff):.1f}° colder than outside ({outside_temp_c}°C)</p>'
                 
+                try:
+                    temp_value = float(data["temp"])
+                except (TypeError, ValueError):
+                    temp_value = 0.0
+                temp_color = _temperature_to_color(temp_value)
+
                 st.markdown(f"""
                     <div style="height: 180px; display: flex; align-items: center; justify-content: center;">
-                        <h1 style="font-size: 4.5rem; margin: 0; color: #333;">{data["temp"]} °C</h1>
+                        <h1 style="font-size: 4.5rem; margin: 0; color: {temp_color};">{data["temp"]} °C</h1>
                     </div>
                     {outside_temp_html}
                     <p style="text-align: center; color: #666;">Stable in the last hour</p>
@@ -247,11 +307,19 @@ with tab1:
                 """, unsafe_allow_html=True)
 
                 st.caption("Oxygenation")
+
+                oxygen_color = _value_to_gradient_color(
+                    float(oxygenation),
+                    0.0,
+                    100.0,
+                    "#ef4444",
+                    "#22c55e",
+                )
                 custom_progress_bar(
                     current=oxygenation,
                     min_val=0,
                     max_val=100,
-                    color=bg_color,
+                    color=oxygen_color,
                     height="30px",
                 )
 
