@@ -91,12 +91,35 @@ def _infer_season(now: datetime, available: set[str]) -> str | None:
         return None
 
 
-def _update_oxygen_bars(now: datetime) -> int | None:
+def _get_window_open_state() -> bool | None:
+    """Return latest known window state from door_current.json.
+
+    Returns:
+        True if window is open, False if closed, None if unknown/unset.
+    """
+    payload = _load_json_file(DOOR_CURRENT_PATH)
+    if not isinstance(payload, dict) or not payload:
+        return None
+
+    if "window_open" in payload:
+        return bool(payload.get("window_open"))
+
+    # Backward compatibility: some senders only provide "closed".
+    if "closed" in payload:
+        return not bool(payload.get("closed"))
+
+    return None
+
+
+def _update_oxygen_bars(now: datetime, *, window_open: bool) -> int | None:
     """Update air oxygen amount based on minutes elapsed since last_updated_at.
 
-    Reads the payload from air_oxygen_bars.json (or fallback), subtracts
-    `decrease_per_min * elapsed_minutes` based on season options, then writes the
-    updated payload back to air_oxygen_bars.json.
+    Reads the payload from air_oxygen_bars.json (or fallback), then:
+    - if window_open: adds `fill_per_min * elapsed_minutes`
+    - else: subtracts `decrease_per_min * elapsed_minutes`
+
+    The season option is chosen from the JSON's `season` key when present,
+    otherwise inferred from date.
     """
     source_payload: dict | None = None
     for path in (AIR_OXYGENATION_PATH, AIR_OXYGENATION_FALLBACK_PATH):
@@ -132,8 +155,9 @@ def _update_oxygen_bars(now: datetime) -> int | None:
     if not isinstance(option, dict):
         return None
 
+    rate_key = "fill" if window_open else "decrease"
     try:
-        decrease_per_min = float(option.get("decrease"))
+        rate_per_min = float(option.get(rate_key))
     except (TypeError, ValueError):
         return None
 
@@ -150,24 +174,31 @@ def _update_oxygen_bars(now: datetime) -> int | None:
         if elapsed_minutes < 0:
             elapsed_minutes = 0.0
 
-    decrease_amount = decrease_per_min * elapsed_minutes
+    delta = rate_per_min * elapsed_minutes
+    direction = "+" if window_open else "-"
     print(
         f"[oxygen] season={season or 'unknown'} "
-        f"decrease_per_min={decrease_per_min} "
+        f"window_open={window_open} "
+        f"{rate_key}_per_min={rate_per_min} "
         f"elapsed_min={elapsed_minutes:.3f} "
-        f"taken_off={decrease_amount:.3f} "
+        f"delta={direction}{delta:.3f} "
         f"from={current_oxygen}"
     )
 
-    updated_oxygen = current_oxygen - decrease_amount
+    updated_oxygen = current_oxygen + delta if window_open else current_oxygen - delta
     updated_oxygen = max(0.0, min(100.0, updated_oxygen))
 
-    source_payload["current_oxygen"] = int(updated_oxygen)
+    # IMPORTANT: keep fractional oxygen in storage.
+    # Truncating to int each update (runs every ~2s) compounds rounding loss
+    # and makes oxygenation fall far faster than intended.
+    source_payload["current_oxygen"] = round(updated_oxygen, 3)
     source_payload["last_updated_at"] = now.isoformat()
 
     # Persist back to the canonical file.
     _atomic_write_json(AIR_OXYGENATION_PATH, source_payload)
-    return int(updated_oxygen)
+
+    # Return a rounded display value for the UI/current_data.json.
+    return int(round(updated_oxygen))
 
 
 def _get_current_oxygenation() -> int | None:
@@ -178,10 +209,12 @@ def _get_current_oxygenation() -> int | None:
             continue
         value = payload.get("current_oxygen")
         try:
-            value_num = int(value)
+            # Stored as float (preferred) but accept ints/strings for backward compatibility.
+            value_num = float(value)
         except (TypeError, ValueError):
             continue
-        return max(0, min(100, value_num))
+
+        return max(0, min(100, int(round(value_num))))
 
     return None
 
@@ -214,7 +247,8 @@ def update_sensors():
         }
 
         # Update oxygen bars each time sensor data arrives (every ~2s).
-        oxygenation = _update_oxygen_bars(datetime.now())
+        window_open_state = _get_window_open_state()
+        oxygenation = _update_oxygen_bars(datetime.now(), window_open=bool(window_open_state))
         if oxygenation is None:
             oxygenation = _get_current_oxygenation()
         if oxygenation is not None:
@@ -279,6 +313,21 @@ def door():
         })
 
         _atomic_write_json(DOOR_CURRENT_PATH, door_current)
+
+        # Refresh oxygenation immediately on state changes so the dashboard
+        # reflects window open/close without waiting for the next sensor tick.
+        try:
+            oxygenation = _update_oxygen_bars(now, window_open=window_open)
+            if oxygenation is None:
+                oxygenation = _get_current_oxygenation()
+            if oxygenation is not None:
+                current_data = _load_json_file(CURRENT_DATA_PATH)
+                if not isinstance(current_data, dict):
+                    current_data = {}
+                current_data["oxygenation"] = oxygenation
+                _atomic_write_json(CURRENT_DATA_PATH, current_data)
+        except Exception as oxygen_error:
+            print(f"Oxygenation update on /door failed: {oxygen_error}")
 
         event_saved = False
         state_changed = (prev_window_open is None) or (bool(prev_window_open) != window_open)

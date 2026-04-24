@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 from asset_classes import *
 from utils import get_current_weather
-st.set_page_config(page_title="My Apartment Status", page_icon="🏢", layout="wide")
+st.set_page_config(page_title="RoomSense", page_icon="🏢", layout="wide")
 
 
 REFRESH_INTERVAL_MS = 3000
@@ -83,7 +83,7 @@ st.markdown("""
 # ==========================================
 # 3. HEADER
 # ==========================================
-st.title("Apartment Status")
+st.title("Room Status")
 st.write("")
 tab1, tab2 = st.tabs(["📊 Current Status", "📈 Historical Data"])
 
