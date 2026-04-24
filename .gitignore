@@ -1,0 +1,7 @@
+# JSON data files (generated/runtime)
+air_oxygen_bars.json
+current_data.json
+historical_data.json
+door_current.json
+door_events.json
+dummy_temp_history.json

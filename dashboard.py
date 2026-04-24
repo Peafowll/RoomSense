@@ -96,11 +96,11 @@ def _build_notifications(
 
     # 1) Close window if it's open and it's cold outside.
     if is_window_open and outside_temp_c is not None and outside_temp_c < 18:
-        notifications.append(("warning", "Outside is under 18°C. Close the window."))
+        notifications.append(("warning", "Outside is under 18°C. Consider closing the window to not decrease room temperature."))
 
     # 2) Open window if it's closed and oxygenation drops.
     if (not is_window_open) and oxygenation is not None and oxygenation < 30:
-        notifications.append(("warning", "Oxygenation is below 30. Open the window."))
+        notifications.append(("warning", "Oxygenation is below 30. Open the window for better focus."))
 
     # 3-4) Open window if it's closed and gas is high.
     if (not is_window_open) and gas is not None:
@@ -111,7 +111,7 @@ def _build_notifications(
 
     # 5) Suggest turning off lights after 10pm when lux is high.
     if light_lux is not None and light_lux > 100 and time.localtime().tm_hour >= 22:
-        notifications.append(("info", "It's after 10pm and the room is bright. Consider turning off the lights."))
+        notifications.append(("info", "It's after 10pm and the room is bright. Consider turning off the lights to avoid bad sleep quality."))
 
     return notifications
 
@@ -338,7 +338,6 @@ with tab1:
                         <h1 style="font-size: 4.5rem; margin: 0; color: {temp_color};">{data["temp"]} °C</h1>
                     </div>
                     {outside_temp_html}
-                    <p style="text-align: center; color: #666;">Stable in the last hour</p>
                 """, unsafe_allow_html=True)
 
         # --- CARD 4: DOOR STATUS ---
