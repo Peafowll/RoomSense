@@ -99,7 +99,7 @@ with tab1:
                     value = data["light"],
                     number = {'suffix': " LUX", 'font': {'size': 40, 'color': "#bbbbbb", 'weight': 'bold'}},
                     gauge = {
-                        'axis': {'range': [None, 1000], 'tickwidth': 1, 'tickcolor': "darkblue"},
+                        'axis': {'range': [0, 500], 'tickwidth': 1, 'tickcolor': "darkblue"},
                         'bar': {'color': "#cbd5e1"},
                         'bgcolor': "white",
                         'borderwidth': 0,
@@ -124,19 +124,19 @@ with tab1:
                 st.markdown("### ☁️ Gases in Room")
                 aqi = data["gas"]
                 
-                if aqi <= 400:
+                if aqi <= 10:
                     status, color, desc = "EXCELLENT", "#22c55e", "Fresh air, low particulates"
-                elif aqi <= 800:
+                elif aqi <= 30:
                     status, color, desc = "MODERATE", "#eab308", "Acceptable air quality"
-                elif aqi <= 1400:
+                elif aqi <= 50:
                     status, color, desc = "UNHEALTHY", "#f97316", "Noticeable pollution"
                 else:
                     status, color, desc = "HAZARDOUS", "#ef4444", "Emergency conditions!."
 
                 custom_progress_bar(
                     current = aqi,
-                    min_val = 200,
-                    max_val = 2200,
+                    min_val = 0,
+                    max_val = 100,
                     color = color,
                     height = "30px"
                 )
