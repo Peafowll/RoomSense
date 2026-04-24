@@ -222,14 +222,20 @@ with tab1:
 
         outside_temp_c: float | None = None
         outside_is_raining: bool | None = None
+        outside_wind_speed_m_s: float | None = None
         try:
             outside_weather = _get_outside_weather(OUTSIDE_LOCATION)
             if outside_weather is not None:
-                outside_temp_c = outside_weather[0]
-                outside_is_raining = outside_weather[1]
+                if len(outside_weather) >= 1:
+                    outside_temp_c = outside_weather[0]
+                if len(outside_weather) >= 2:
+                    outside_is_raining = outside_weather[1]
+                if len(outside_weather) >= 3:
+                    outside_wind_speed_m_s = outside_weather[2]
         except Exception:
             outside_temp_c = None
             outside_is_raining = None
+            outside_wind_speed_m_s = None
 
         historical_data = _get_latest_historical_data()
 
