@@ -3,6 +3,12 @@ import requests
 from datetime import datetime
 
 def record_historical_data(data : dict, timestamp : datetime):
+    """
+    Writes a dictionary of data to the `historical_data.json` file, at a timestamp.
+    Params :
+        data (dict) : The data to be saved.
+        timestamp (datetime) : The time at which the data was recorded.
+    """
     try:
         with open("historical_data.json", "r") as historical_file:
             loaded_data = json.load(historical_file)
