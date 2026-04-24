@@ -11,6 +11,8 @@ update_count = 0
 last_data = None
 
 CURRENT_DATA_PATH = Path(__file__).with_name("current_data.json")
+DOOR_CURRENT_PATH = Path(__file__).with_name("door_current.json")
+DOOR_EVENTS_PATH = Path(__file__).with_name("door_events.json")
 
 
 def _load_json_file(path: Path) -> dict:
@@ -51,15 +53,12 @@ def update_sensors():
         print(f"Lumină:      {lumina:.2f} Lux")
         print("------------------------")
         
-        # Data translate
-        existing = _load_json_file(CURRENT_DATA_PATH)
-        window_open = bool(existing.get("window_open", False))
+        # Data translate (sensor-only; door/window is tracked separately)
         current_data = {
             "temp": temp,
             "humidity": hum,
             "gas": gaz,
             "light": lumina,
-            "window_open": window_open,
         }
 
         _atomic_write_json(CURRENT_DATA_PATH, current_data)
@@ -103,15 +102,57 @@ def door():
             closed_bool = bool(closed)
 
         window_open = not closed_bool
-        existing = _load_json_file(CURRENT_DATA_PATH)
-        if not isinstance(existing, dict):
-            existing = {}
-        existing["window_open"] = window_open
+        distanta = data.get("distanta", None)
 
-        _atomic_write_json(CURRENT_DATA_PATH, existing)
+        door_current = _load_json_file(DOOR_CURRENT_PATH)
+        if not isinstance(door_current, dict):
+            door_current = {}
 
-        print({"door": data, "window_open": window_open})
-        return jsonify({"status": "success", "window_open": window_open}), 200
+        prev_window_open = door_current.get("window_open", None)
+        prev_closed = door_current.get("closed", None)
+
+        now = datetime.now()
+        door_current.update({
+            "window_open": window_open,
+            "closed": closed_bool,
+            "distanta": distanta,
+            "updated_at": now.isoformat(),
+        })
+
+        _atomic_write_json(DOOR_CURRENT_PATH, door_current)
+
+        event_saved = False
+        state_changed = (prev_window_open is None) or (bool(prev_window_open) != window_open)
+        state_changed = state_changed or (prev_closed is None) or (bool(prev_closed) != closed_bool)
+        if state_changed:
+            try:
+                events = _load_json_file(DOOR_EVENTS_PATH)
+                if not isinstance(events, dict):
+                    events = {}
+
+                ts = now.isoformat()
+                # Extremely unlikely collision, but keep keys unique.
+                while ts in events:
+                    now = datetime.now()
+                    ts = now.isoformat()
+
+                events[ts] = {
+                    "window_open": window_open,
+                    "closed": closed_bool,
+                    "distanta": distanta,
+                }
+                _atomic_write_json(DOOR_EVENTS_PATH, events)
+                event_saved = True
+            except Exception as history_error:
+                print(f"Door event write failed: {history_error}")
+
+        print({"door": data, "window_open": window_open, "event_saved": event_saved})
+        return jsonify({
+            "status": "success",
+            "message": "Data received",
+            "window_open": window_open,
+            "event_saved": event_saved,
+        }), 200
     except Exception as e:
         print(f"Eroare: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500

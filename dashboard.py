@@ -13,6 +13,8 @@ st.set_page_config(page_title="My Apartment Status", page_icon="🏢", layout="w
 REFRESH_INTERVAL_MS = 3000
 CURRENT_DATA_PATH = Path(__file__).with_name("current_data.json")
 HISTORICAL_DATA_PATH = Path(__file__).with_name("historical_data.json")
+DOOR_CURRENT_PATH = Path(__file__).with_name("door_current.json")
+DOOR_EVENTS_PATH = Path(__file__).with_name("door_events.json")
 
 
 def _load_json_safely(path: Path, *, retries: int = 5, delay_s: float = 0.05) -> dict | None:
@@ -45,6 +47,22 @@ def _get_latest_historical_data() -> dict | None:
         return data
 
     return st.session_state.get("_last_good_historical_data")
+
+
+def _get_latest_door_current_data() -> dict | None:
+    data = _load_json_safely(DOOR_CURRENT_PATH)
+    if data is not None:
+        st.session_state["_last_good_door_current"] = data
+        return data
+    return st.session_state.get("_last_good_door_current")
+
+
+def _get_latest_door_events_data() -> dict | None:
+    data = _load_json_safely(DOOR_EVENTS_PATH, retries=25, delay_s=0.05)
+    if data is not None:
+        st.session_state["_last_good_door_events"] = data
+        return data
+    return st.session_state.get("_last_good_door_events")
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -94,6 +112,8 @@ with tab1:
         if data is None:
             st.info("Waiting for readable current data (current_data.json is updating).")
             return
+
+        door_data = _get_latest_door_current_data() or {}
 
         # ==========================================
         # 4. DASHBOARD GRID
@@ -198,8 +218,10 @@ with tab1:
         with col4:
             with st.container(border=True):
                 st.markdown("### 🪟 WINDOW STATUS")
-                
-                is_open = data["window_open"]
+
+                # Door/window tracking is stored separately (door_current.json),
+                # but keep a soft fallback for older files.
+                is_open = bool(door_data.get("window_open", data.get("window_open", False)))
                 oxygenation = 100 if is_open else 0
                 
                 if is_open:
@@ -263,6 +285,37 @@ with tab2:
         df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
         df = df.dropna(subset=["timestamp"]).sort_values("timestamp")
 
+        # Door/window tracking is stored separately in door_events.json.
+        # If present, prefer the reconstructed series (even if the legacy
+        # historical_data.json still contains an old window_open column).
+        door_events = _get_latest_door_events_data() or {}
+        if isinstance(door_events, dict) and len(door_events) > 0:
+            door_df = pd.DataFrame.from_dict(door_events, orient="index")
+            door_df.index.name = "timestamp"
+            door_df = door_df.reset_index()
+            door_df["timestamp"] = pd.to_datetime(door_df["timestamp"], errors="coerce")
+            door_df = door_df.dropna(subset=["timestamp"]).sort_values("timestamp")
+
+            if "window_open" not in door_df.columns and "closed" in door_df.columns:
+                door_df["window_open"] = ~door_df["closed"].astype(bool)
+
+            if "window_open" in door_df.columns:
+                door_df["window_open"] = door_df["window_open"].astype(bool)
+                door_df = door_df.rename(columns={"window_open": "window_open_event"})
+                df = pd.merge_asof(
+                    df.sort_values("timestamp"),
+                    door_df[["timestamp", "window_open_event"]].sort_values("timestamp"),
+                    on="timestamp",
+                    direction="backward",
+                )
+
+                if "window_open" in df.columns:
+                    df["window_open"] = df["window_open_event"].combine_first(df["window_open"])
+                else:
+                    df["window_open"] = df["window_open_event"]
+
+                df = df.drop(columns=["window_open_event"])
+
         if "window_open" in df.columns:
             df["window_open"] = df["window_open"].astype(int)
 
@@ -270,8 +323,7 @@ with tab2:
             ("temp", "🌡️ Temperature", "#f97316", True),
             ("humidity", "💧 Humidity", "#3b82f6", True),
             ("gas", "☁️ Gas", "#a855f7", True),
-            ("light", "☀️ Light", "#eab308", True),
-            ("window_open", "🪟 Window Open (0/1)", "#22c55e", False),
+            ("light", "☀️ Light", "#eab308", True)
         ]
 
         available_specs = [spec for spec in metric_specs if spec[0] in df.columns]
