@@ -1,9 +1,11 @@
+
 # Code the Future 2026
 
 ## 🌿 RoomSense
 **RoomSense** is an intelligent indoor environment analyzer designed to improve user well-being. Unlike standard monitoring systems, RoomSense doesn't just show data—it provides **actionable health tips** based on environmental factors, circadian rhythms, and outdoor weather integration.
 
 ## 🚀 Key Features
+
 ### 🛌 Circadian Rhythm Support
 -   **Smart Lighting Alerts:** Using a Photoresistor (LDR), the system monitors light intensity. After **10:00 PM**, if high light levels are detected, the dashboard advises the user to dim the lights to improve sleep quality and maintain a healthy internal clock.
 
@@ -20,24 +22,31 @@
 -   **JSON Logging:** All data is stored in JSON format.
 -   **Streamlit Dashboard:** Users can upload historical logs to generate interactive graphs, allowing them to track their living habits over time.
 
-## 🛠️ Hardware Architecture
-The system consists of two specialized sensor nodes and a central server:
-1. Environment Node (ESP32-C6) 
-Handles ambient data collection and Wi-Fi transmission.
-* **Microcontroller:** ESP32-C6 (Next-gen Wi-Fi 6 support).
-* **Sensors:**
-	* DHT22: Digital Temperature & Humidity.
-	* LDR: Analog Light Intensity (converted to Lux).
-	* MQ3: Analog Gas/Smoke levels (mapped to percentage).
-* **Protocol:** Sends JSON payloads via `POST` requests to the `/update` endpoint.
 
-2. Window Security Node (Raspberry Pi 5) 
-Monitors the physical state of a window using proximity detection.
-* **Compute:** Raspberry Pi 5.
-* **Sensor**: HC-SR04 Ultrasonic Sensor.
-* **Logic:** The system treats the window as Closed if the distance detected is less than 20cm.
-* **Technical Note:** Although the internal code/API uses door terminology, it is functionally applied to Window Monitoring.
-* **Protocol:** Sends state data via `POST` requests to the `/door` endpoint.
+## 🛠️ Hardware Architecture
+
+The system utilizes a distributed dual-node architecture designed to capture a complete picture of your indoor living environment:
+
+### 1. Environmental Wellness Node (`ESP32-C6`)
+
+This node focuses on the biological and atmospheric factors that influence daily health and sleep quality.
+-   **Microcontroller:** ESP32-C6 (leveraging Wi-Fi 6 for stable, low-power data transmission).
+-   **Sensors & Health Impact:**
+    -   **DHT22:** Monitors temperature and humidity to ensure optimal thermal comfort and prevent respiratory irritation.
+    -   **LDR (Photoresistor):** Tracks ambient light levels to provide "Smart Sleep" advice, helping regulate the user's circadian rhythm.
+    -   **MQ-3:** Functions as an air quality proxy, detecting volatile particles to ensure the living space remains fresh.
+-   **Protocol:** Transmits structured JSON payloads via `POST` requests to the `/update` endpoint.
+    
+
+### 2. Ventilation & Oxygenation Node (`Raspberry Pi 5`)
+
+This node monitors the physical interaction with the outdoor environment to manage room "breathing" cycles.
+-   **Compute Unit:** Raspberry Pi 5.
+-   **Sensor:** **HC-SR04 Ultrasonic Sensor**.
+-   **Logic (Fresh Air Tracking):** The system monitors the window's position via proximity detection. A distance of **< 20cm** indicates the window is closed.
+-   **Actionable Insight:** This state triggers the "Oxygenation Bar" logic on the dashboard, tracking how long the room has been ventilated relative to the current season and outdoor weather.
+-   **Protocol:** Syncs window status via `POST` requests to the `/door` endpoint (maintained for API compatibility).
+
 
 ## 💻 Software Stack
 
@@ -48,12 +57,14 @@ Technologies:
 -   **External APIs:** Open-Meteo (Weather Data)
 -   **Data Format:** JSON
 
+
 ## 🔄 System Flow
 
 1.  **Data Collection:** ESP32 and Raspberry Pi gather environmental and proximity data.
 2.  **Transmission:** Nodes send HTTP POST requests with JSON payloads to the central server.
 3.  **Processing:** The backend receives the data and stores/updates the current room state.
 4.  **Visualization:** **Streamlit** fetches the data and displays it in an intuitive, user-friendly interface for the end-user.
+
 
 ## ⚙️ Setup & Installation
 ESP32-C6 Configuration
@@ -72,6 +83,7 @@ Start the Flask data aggregation server: `python server.py`
 
 In a separate terminal, launch the interactive dashboard: `streamlit run dashboard.py`
 
+
 ## 📊 API Data Format
 Environment Update (ESP32) Endpoint: `POST /update`
 `{
@@ -87,9 +99,11 @@ Window Status Update (RPi 5) Endpoint: `POST /door` (Context: Window Status)
 "distanta": 12.5
 }`
 
-## 📝 Technical Implementation Details
-* **Lux Calculation:** The ESP32 code uses a standard formula to convert raw ADC values into Lux, accounting for the fixed resistor ($10k\Omega$) and VIn ($3.3V$).
-* **Safety Checks:** The firmware includes validation to prevent sending `NaN` values if the DHT22 sensor fails to initialize.
-* **GPIO Management:** The Raspberry Pi script utilizes the `lgpio` factory to ensure compatibility with the Raspberry Pi 5 hardware architecture.
+
+## 🛠️ Technical Implementation & Optimization
+-   **Precision Light Sensing:** To provide accurate sleep tips, the ESP32 performs on-board calculations to convert raw analog signals into **Lux**. This involves a voltage divider circuit logic ($10k\Omega$ fixed resistor at $3.3V$) to ensure the lighting data matches real-world conditions.
+-   **Data Integrity & Reliability:** The firmware features a robust validation layer. It prevents the propagation of "Ghost Data" by filtering `NaN` (Not a Number) values from the DHT22 sensor, ensuring the health tips are always based on valid environmental readings.
+-   **RPi 5 Hardware Integration:** The window monitoring logic is optimized for the **Raspberry Pi 5** architecture. By utilizing the `lgpio` library, the system ensures low-latency response times for the ultrasonic sensor, allowing for real-time updates to the "Oxygenation Bar."
+-   **Predictive Analytics Engine:** The system bridges local sensor data with the **Open-Meteo API**. By applying a thermal gradient formula between the indoor and outdoor temperatures, the dashboard calculates a predictive cooling curve to tell users exactly how their room's climate will change over the next 5 minutes.
 
 
