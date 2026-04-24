@@ -224,10 +224,26 @@ with tab1:
     _render_current_status()
 
 with tab2:
-    historical_data = _get_latest_historical_data()
-    if not historical_data:
-        st.info("No readable historical data yet (historical_data.json may still be updating).")
+    if hasattr(st, "fragment"):
+        render_hist_decorator = st.fragment(run_every=f"{REFRESH_INTERVAL_MS}ms")
     else:
+        try:
+            from streamlit_autorefresh import st_autorefresh  # type: ignore
+
+            st_autorefresh(interval=REFRESH_INTERVAL_MS, key="historical_data_autorefresh")
+        except Exception:
+            pass
+
+        def render_hist_decorator(fn):
+            return fn
+
+    @render_hist_decorator
+    def _render_historical_data() -> None:
+        historical_data = _get_latest_historical_data()
+        if not historical_data:
+            st.info("No readable historical data yet (historical_data.json may still be updating).")
+            return
+
         df = pd.DataFrame.from_dict(historical_data, orient="index")
         df.index.name = "timestamp"
         df = df.reset_index()
@@ -246,24 +262,23 @@ with tab2:
             ("window_open", "🪟 Window Open (0/1)", "#22c55e", False),
         ]
 
-        # Only render metrics that are present in the file.
         available_specs = [spec for spec in metric_specs if spec[0] in df.columns]
         if not available_specs:
             st.warning("historical_data.json has no recognized measurement columns.")
-        else:
-            col_left, col_right = st.columns(2)
-            for idx, (metric_col, title, color, fill_area) in enumerate(available_specs):
-                target_col = col_left if idx % 2 == 0 else col_right
-                with target_col:
-                    with st.container(border=True):
-                        display_historical_graph(
-                            df=df,
-                            date_column="timestamp",
-                            metric_column=metric_col,
-                            title=title,
-                            line_color=color,
-                            fill_area=fill_area,
-                        )
+            return
 
-            with st.expander("Raw historical data"):
-                st.dataframe(df, use_container_width=True)
+        col_left, col_right = st.columns(2)
+        for idx, (metric_col, title, color, fill_area) in enumerate(available_specs):
+            target_col = col_left if idx % 2 == 0 else col_right
+            with target_col:
+                with st.container(border=True):
+                    display_historical_graph(
+                        df=df,
+                        date_column="timestamp",
+                        metric_column=metric_col,
+                        title=title,
+                        line_color=color,
+                        fill_area=fill_area,
+                    )
+
+    _render_historical_data()

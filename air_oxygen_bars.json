@@ -1,0 +1,14 @@
+{
+    "winter" :{
+        "fill" : 25,
+        "decrease" : 0.25
+    },
+    "spring" : {
+        "fill" : 6,
+        "decrease" : 0.40
+    },
+    "summer" : {
+        "fill" : 4,
+        "decrease" : 0.55
+    }
+}
