@@ -76,6 +76,7 @@ def _build_notifications(
     current_data: dict,
     door_data: dict,
     outside_temp_c: float | None,
+    outside_is_raining: bool | None,
     historical_data: dict | None,
 ) -> list[tuple[str, str]]:
     notifications: list[tuple[str, str]] = []
@@ -93,6 +94,10 @@ def _build_notifications(
     light_lux = _num(current_data.get("light"))
 
     is_window_open = bool(door_data.get("window_open", current_data.get("window_open", False)))
+
+    # 0) Close window if it's open and it's raining outside.
+    if is_window_open and outside_is_raining is True:
+        notifications.append(("error", "It's raining outside and the window is open. Close the window."))
 
     # 1) Close window if it's open and it's cold outside.
     if is_window_open and outside_temp_c is not None and outside_temp_c < 18:
@@ -170,6 +175,7 @@ def _get_outside_weather(location: tuple):
 
 
 OUTSIDE_LOCATION = (45.6486, 25.6061)
+#OUTSIDE_LOCATION = (4.6243, -74.0636)
 
 st.markdown("""
     <style>
@@ -215,12 +221,15 @@ with tab1:
         door_data = _get_latest_door_current_data() or {}
 
         outside_temp_c: float | None = None
+        outside_is_raining: bool | None = None
         try:
             outside_weather = _get_outside_weather(OUTSIDE_LOCATION)
             if outside_weather is not None:
                 outside_temp_c = outside_weather[0]
+                outside_is_raining = outside_weather[1]
         except Exception:
             outside_temp_c = None
+            outside_is_raining = None
 
         historical_data = _get_latest_historical_data()
 
@@ -230,6 +239,7 @@ with tab1:
                 current_data=data,
                 door_data=door_data,
                 outside_temp_c=outside_temp_c,
+                outside_is_raining=outside_is_raining,
                 historical_data=historical_data,
             )
 
@@ -323,9 +333,16 @@ with tab1:
                     temp_diff = data["temp"] - outside_temp_c
                 
                     if temp_diff >= 0:
-                        outside_temp_html = f'<p style="text-align: center; color: #666; font-size: 1.1rem; margin: 0;">{temp_diff:.1f}° warmer than outside ({outside_temp_c}°C)</p>'
+                        outside_temp_html = f'<p style="text-align: center; color: #666; font-size: 1.1rem; margin: 0;">{temp_diff:.1f}° warmer than outside ({outside_temp_c:.1f}°C)</p>'
                     else:
-                        outside_temp_html = f'<p style="text-align: center; color: #666; font-size: 1.1rem; margin: 0;">{abs(temp_diff):.1f}° colder than outside ({outside_temp_c}°C)</p>'
+                        outside_temp_html = f'<p style="text-align: center; color: #666; font-size: 1.1rem; margin: 0;">{abs(temp_diff):.1f}° colder than outside ({outside_temp_c:.1f}°C)</p>'
+
+                if outside_is_raining is True:
+                    outside_rain_html = '<p style="text-align: center; color: #666; font-size: 1.0rem; margin: 0;">🌧️ Raining outside</p>'
+                elif outside_is_raining is False:
+                    outside_rain_html = '<p style="text-align: center; color: #666; font-size: 1.0rem; margin: 0;">☁️ No rain outside</p>'
+                else:
+                    outside_rain_html = '<p style="text-align: center; color: #666; font-size: 1.0rem; margin: 0;">☔ Rain status unavailable</p>'
                 
                 try:
                     temp_value = float(data["temp"])
@@ -338,6 +355,7 @@ with tab1:
                         <h1 style="font-size: 4.5rem; margin: 0; color: {temp_color};">{data["temp"]} °C</h1>
                     </div>
                     {outside_temp_html}
+                    {outside_rain_html}
                 """, unsafe_allow_html=True)
 
         # --- CARD 4: DOOR STATUS ---
