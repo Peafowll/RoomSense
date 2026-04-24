@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import json
 import os
+from pathlib import Path
 from datetime import datetime
 from utils import record_historical_data
 
@@ -37,11 +38,14 @@ def update_sensors():
             "window_open": False 
         }
 
-        with open("current_data.json", "w") as f:
-            json.dump(current_data, f, indent=4)
+        current_path = Path(__file__).with_name("current_data.json")
+        tmp_path = current_path.with_suffix(current_path.suffix + ".tmp")
+        tmp_path.write_text(json.dumps(current_data, indent=4), encoding="utf-8")
+        os.replace(tmp_path, current_path)
 
-        update_count += 1
-        if update_count % 5:
+        global update_count 
+        update_count+= 1
+        if update_count % 5 == 0:
             now = datetime.now()
             record_historical_data(current_data, now)
 

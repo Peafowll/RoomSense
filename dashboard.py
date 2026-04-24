@@ -38,7 +38,8 @@ def _get_latest_current_data() -> dict | None:
 
 def _get_latest_historical_data() -> dict | None:
     """Return the latest readable historical data, falling back to last good value."""
-    data = _load_json_safely(HISTORICAL_DATA_PATH)
+    # historical_data.json can be larger and is rewritten; give it a bit more time.
+    data = _load_json_safely(HISTORICAL_DATA_PATH, retries=25, delay_s=0.05)
     if data is not None:
         st.session_state["_last_good_historical_data"] = data
         return data

@@ -1,4 +1,6 @@
 import json
+import os
+from pathlib import Path
 import requests
 from datetime import datetime, timedelta
 
@@ -9,10 +11,11 @@ def record_historical_data(data : dict, timestamp : datetime):
         data (dict) : The data to be saved.
         timestamp (datetime) : The time at which the data was recorded.
     """
+    historical_path = Path(__file__).with_name("historical_data.json")
+
     try:
-        with open("historical_data.json", "r") as historical_file:
-            loaded_data = json.load(historical_file)
-    except (FileNotFoundError, json.JSONDecodeError):
+        loaded_data = json.loads(historical_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
         loaded_data = {}
 
     loaded_data[timestamp.isoformat()] = data
@@ -29,8 +32,16 @@ def record_historical_data(data : dict, timestamp : datetime):
         except ValueError:
             continue
 
-    with open("historical_data.json", "w") as historical_file:
-        json.dump(filtered_data, historical_file, indent=4)
+    # Atomic write to avoid dashboard reading partial JSON mid-write.
+    tmp_path = historical_path.with_suffix(historical_path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(filtered_data, indent=4), encoding="utf-8")
+    try:
+        os.replace(tmp_path, historical_path)
+    finally:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 def get_current_weather(location : tuple):

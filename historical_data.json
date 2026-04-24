@@ -1,359 +1,44 @@
 {
-    "2026-04-24 15:53:12.875300": {
-        "temp": 25.5,
-        "humidity": 25.2,
+    "2026-04-24T16:44:21.579208": {
+        "temp": 24.0,
+        "humidity": 29.1,
         "gas": 0,
-        "light": 36.58,
+        "light": 123.96,
         "window_open": false
     },
-    "2026-04-24 15:53:14.959659": {
-        "temp": 25.5,
-        "humidity": 25.2,
+    "2026-04-24T16:44:32.138821": {
+        "temp": 24.0,
+        "humidity": 29.2,
         "gas": 0,
-        "light": 87.69,
+        "light": 175.0,
         "window_open": false
     },
-    "2026-04-24 15:53:17.081142": {
-        "temp": 25.5,
-        "humidity": 25.1,
+    "2026-04-24T16:44:42.686869": {
+        "temp": 24.0,
+        "humidity": 29.2,
         "gas": 0,
-        "light": 31.7,
+        "light": 180.31,
         "window_open": false
     },
-    "2026-04-24 15:53:19.171921": {
-        "temp": 25.5,
-        "humidity": 25.1,
+    "2026-04-24T16:44:53.339820": {
+        "temp": 24.0,
+        "humidity": 29.4,
         "gas": 0,
-        "light": 276.55,
+        "light": 47.22,
         "window_open": false
     },
-    "2026-04-24 15:53:21.278583": {
-        "temp": 25.5,
-        "humidity": 25.2,
+    "2026-04-24T16:45:03.984760": {
+        "temp": 24.0,
+        "humidity": 29.3,
         "gas": 0,
-        "light": 246.31,
+        "light": 233.59,
         "window_open": false
     },
-    "2026-04-24 15:53:23.429486": {
-        "temp": 25.5,
-        "humidity": 25.1,
+    "2026-04-24T16:45:18.837955": {
+        "temp": 24.0,
+        "humidity": 29.2,
         "gas": 0,
-        "light": 290.68,
-        "window_open": false
-    },
-    "2026-04-24 15:53:25.578442": {
-        "temp": 25.5,
-        "humidity": 25.1,
-        "gas": 0,
-        "light": 290.68,
-        "window_open": false
-    },
-    "2026-04-24 15:53:27.730610": {
-        "temp": 25.5,
-        "humidity": 25.2,
-        "gas": 0,
-        "light": 288.43,
-        "window_open": false
-    },
-    "2026-04-24 15:53:29.817759": {
-        "temp": 25.5,
-        "humidity": 25.1,
-        "gas": 0,
-        "light": 225.94,
-        "window_open": false
-    },
-    "2026-04-24 15:53:31.929093": {
-        "temp": 25.5,
-        "humidity": 25.2,
-        "gas": 37,
-        "light": 198.18,
-        "window_open": false
-    },
-    "2026-04-24 15:53:34.081499": {
-        "temp": 25.5,
-        "humidity": 25.2,
-        "gas": 40,
-        "light": 199.39,
-        "window_open": false
-    },
-    "2026-04-24 15:53:36.230129": {
-        "temp": 25.5,
-        "humidity": 25.2,
-        "gas": 34,
-        "light": 180.06,
-        "window_open": false
-    },
-    "2026-04-24 15:53:38.380639": {
-        "temp": 25.5,
-        "humidity": 25.2,
-        "gas": 33,
-        "light": 200.0,
-        "window_open": false
-    },
-    "2026-04-24 15:53:40.502077": {
-        "temp": 25.5,
-        "humidity": 25.2,
-        "gas": 29,
-        "light": 37.28,
-        "window_open": false
-    },
-    "2026-04-24 15:53:42.683001": {
-        "temp": 25.5,
-        "humidity": 25.2,
-        "gas": 31,
-        "light": 34.68,
-        "window_open": false
-    },
-    "2026-04-24 15:53:44.829286": {
-        "temp": 25.5,
-        "humidity": 25.3,
-        "gas": 36,
-        "light": 40.28,
-        "window_open": false
-    },
-    "2026-04-24 15:53:46.982643": {
-        "temp": 25.5,
-        "humidity": 25.3,
-        "gas": 34,
-        "light": 255.14,
-        "window_open": false
-    },
-    "2026-04-24 15:53:49.130674": {
-        "temp": 25.4,
-        "humidity": 25.3,
-        "gas": 31,
-        "light": 231.64,
-        "window_open": false
-    },
-    "2026-04-24 15:53:51.223690": {
-        "temp": 25.5,
-        "humidity": 26.4,
-        "gas": 28,
-        "light": 116.19,
-        "window_open": false
-    },
-    "2026-04-24 15:53:53.309936": {
-        "temp": 25.6,
-        "humidity": 33.1,
-        "gas": 25,
-        "light": 215.56,
-        "window_open": false
-    },
-    "2026-04-24 15:53:55.481795": {
-        "temp": 25.7,
-        "humidity": 40.3,
-        "gas": 22,
-        "light": 239.19,
-        "window_open": false
-    },
-    "2026-04-24 16:05:17.935512": {
-        "temp": 25.6,
-        "humidity": 26.6,
-        "gas": 0,
-        "light": 214.88,
-        "window_open": false
-    },
-    "2026-04-24 16:05:20.123601": {
-        "temp": 25.6,
-        "humidity": 26.7,
-        "gas": 0,
-        "light": 245.45,
-        "window_open": false
-    },
-    "2026-04-24 16:05:22.211903": {
-        "temp": 25.6,
-        "humidity": 26.7,
-        "gas": 0,
-        "light": 247.6,
-        "window_open": false
-    },
-    "2026-04-24 16:05:24.425255": {
-        "temp": 25.5,
-        "humidity": 26.7,
-        "gas": 0,
-        "light": 245.45,
-        "window_open": false
-    },
-    "2026-04-24 16:05:26.516834": {
-        "temp": 25.5,
-        "humidity": 26.6,
-        "gas": 0,
-        "light": 246.31,
-        "window_open": false
-    },
-    "2026-04-24 16:05:28.621860": {
-        "temp": 25.5,
-        "humidity": 26.6,
-        "gas": 0,
-        "light": 245.45,
-        "window_open": false
-    },
-    "2026-04-24 16:05:30.772534": {
-        "temp": 25.5,
-        "humidity": 26.7,
-        "gas": 0,
-        "light": 246.31,
-        "window_open": false
-    },
-    "2026-04-24 16:05:32.922463": {
-        "temp": 25.5,
-        "humidity": 26.6,
-        "gas": 0,
-        "light": 246.31,
-        "window_open": false
-    },
-    "2026-04-24 16:05:35.075828": {
-        "temp": 25.5,
-        "humidity": 26.7,
-        "gas": 0,
-        "light": 247.17,
-        "window_open": false
-    },
-    "2026-04-24 16:05:37.229877": {
-        "temp": 25.5,
-        "humidity": 26.7,
-        "gas": 0,
-        "light": 37.31,
-        "window_open": false
-    },
-    "2026-04-24 16:05:39.374926": {
-        "temp": 25.5,
-        "humidity": 26.7,
-        "gas": 0,
-        "light": 37.91,
-        "window_open": false
-    },
-    "2026-04-24 16:05:41.467071": {
-        "temp": 25.5,
-        "humidity": 26.8,
-        "gas": 0,
-        "light": 187.25,
-        "window_open": false
-    },
-    "2026-04-24 16:05:43.571594": {
-        "temp": 25.5,
-        "humidity": 26.8,
-        "gas": 0,
-        "light": 148.79,
-        "window_open": false
-    },
-    "2026-04-24 16:05:45.654270": {
-        "temp": 25.5,
-        "humidity": 27.0,
-        "gas": 0,
-        "light": 204.98,
-        "window_open": false
-    },
-    "2026-04-24 16:05:47.741215": {
-        "temp": 25.5,
-        "humidity": 28.4,
-        "gas": 0,
-        "light": 139.06,
-        "window_open": false
-    },
-    "2026-04-24 16:05:49.829161": {
-        "temp": 25.5,
-        "humidity": 30.9,
-        "gas": 0,
-        "light": 136.48,
-        "window_open": false
-    },
-    "2026-04-24 16:05:51.968558": {
-        "temp": 25.5,
-        "humidity": 34.0,
-        "gas": 0,
-        "light": 135.97,
-        "window_open": false
-    },
-    "2026-04-24 16:05:54.119340": {
-        "temp": 25.5,
-        "humidity": 37.6,
-        "gas": 0,
-        "light": 135.63,
-        "window_open": false
-    },
-    "2026-04-24 16:05:56.377812": {
-        "temp": 25.6,
-        "humidity": 41.4,
-        "gas": 0,
-        "light": 134.79,
-        "window_open": false
-    },
-    "2026-04-24 16:05:58.463944": {
-        "temp": 25.7,
-        "humidity": 45.1,
-        "gas": 0,
-        "light": 134.63,
-        "window_open": false
-    },
-    "2026-04-24 16:06:00.675416": {
-        "temp": 25.8,
-        "humidity": 48.7,
-        "gas": 0,
-        "light": 133.8,
-        "window_open": false
-    },
-    "2026-04-24 16:06:02.768320": {
-        "temp": 25.9,
-        "humidity": 51.8,
-        "gas": 0,
-        "light": 212.5,
-        "window_open": false
-    },
-    "2026-04-24 16:06:04.855721": {
-        "temp": 26.0,
-        "humidity": 54.3,
-        "gas": 0,
-        "light": 246.31,
-        "window_open": false
-    },
-    "2026-04-24 16:06:07.023949": {
-        "temp": 26.1,
-        "humidity": 54.4,
-        "gas": 0,
-        "light": 246.31,
-        "window_open": false
-    },
-    "2026-04-24 16:06:09.128944": {
-        "temp": 26.2,
-        "humidity": 52.7,
-        "gas": 0,
-        "light": 247.6,
-        "window_open": false
-    },
-    "2026-04-24 16:06:11.323251": {
-        "temp": 26.3,
-        "humidity": 50.6,
-        "gas": 0,
-        "light": 248.91,
-        "window_open": false
-    },
-    "2026-04-24 16:06:13.415578": {
-        "temp": 26.4,
-        "humidity": 48.6,
-        "gas": 0,
-        "light": 242.92,
-        "window_open": false
-    },
-    "2026-04-24 16:06:15.631494": {
-        "temp": 26.5,
-        "humidity": 46.5,
-        "gas": 0,
-        "light": 243.34,
-        "window_open": false
-    },
-    "2026-04-24 16:06:17.776218": {
-        "temp": 26.6,
-        "humidity": 44.6,
-        "gas": 0,
-        "light": 249.78,
-        "window_open": false
-    },
-    "2026-04-24 16:06:19.928307": {
-        "temp": 26.7,
-        "humidity": 42.7,
-        "gas": 0,
-        "light": 259.29,
+        "light": 229.33,
         "window_open": false
     }
 }
