@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import json
 import time
+import math
 from json import JSONDecodeError
 from pathlib import Path
 import pandas as pd
@@ -69,6 +70,123 @@ def _temperature_to_color(temp_c: float) -> str:
     if temp_c <= comfy:
         return _value_to_gradient_color(temp_c, cold, comfy, "#3b82f6", "#22c55e")
     return _value_to_gradient_color(temp_c, comfy, hot, "#22c55e", "#ef4444")
+
+
+def _predict_room_temp_after_minutes(
+    *,
+    inside_temp_c: float | None,
+    outside_temp_c: float | None,
+    wind_speed_m_s: float | None,
+    t_minutes: float,
+    volume_m3: float = 30.0,
+    window_open_area_m2: float = 0.5,
+    discharge_coeff: float = 0.6,
+    thermal_mass_factor: float = 20.0,  # Slows down cooling to account for walls/furniture
+) -> float | None:
+    """Predict inside temperature after t_minutes with window open.
+
+    Uses a simple exponential approach-to-outside model:
+        T(t) = T_out + (T_in - T_out) * exp(-k * t)
+        k = ((A * v * C_d) / V) / thermal_mass_factor
+
+    Assumptions:
+    - wind_speed_m_s in m/s
+    - t_minutes in minutes
+    - volume in m^3, window area in m^2
+    """
+    if inside_temp_c is None or outside_temp_c is None or wind_speed_m_s is None:
+        return None
+
+    try:
+        inside = float(inside_temp_c)
+        outside = float(outside_temp_c)
+        wind = float(wind_speed_m_s)
+    except (TypeError, ValueError):
+        return None
+
+    if volume_m3 <= 0 or window_open_area_m2 <= 0 or discharge_coeff <= 0 or t_minutes < 0:
+        return None
+    if wind < 0:
+        return None
+
+    if thermal_mass_factor <= 0:
+        return None
+
+    t_seconds = t_minutes * 60.0
+
+    # Calculate the raw air exchange rate
+    raw_k = (window_open_area_m2 * wind * discharge_coeff) / volume_m3
+
+    # Dampen the rate to account for the room's thermal mass
+    realistic_k = raw_k / thermal_mass_factor
+
+    return outside + (inside - outside) * math.exp(-realistic_k * t_seconds)
+
+
+def _time_to_reach_target_temp_minutes(
+    *,
+    inside_temp_c: float | None,
+    outside_temp_c: float | None,
+    wind_speed_m_s: float | None,
+    target_temp_c: float,
+    volume_m3: float = 30.0,
+    window_open_area_m2: float = 0.5,
+    discharge_coeff: float = 0.6,
+    thermal_mass_factor: float = 20.0,
+) -> float | None:
+    """Return minutes to reach target_temp_c while window is open.
+
+    Uses the same model as `_predict_room_temp_after_minutes`.
+    Returns None if the target is not reachable (asymptotic/outside conditions) or inputs missing.
+    """
+    if inside_temp_c is None or outside_temp_c is None or wind_speed_m_s is None:
+        return None
+
+    try:
+        inside = float(inside_temp_c)
+        outside = float(outside_temp_c)
+        wind = float(wind_speed_m_s)
+        target = float(target_temp_c)
+    except (TypeError, ValueError):
+        return None
+
+    if volume_m3 <= 0 or window_open_area_m2 <= 0 or discharge_coeff <= 0:
+        return None
+    if wind < 0 or thermal_mass_factor <= 0:
+        return None
+
+    delta0 = inside - outside
+    if abs(delta0) < 1e-9:
+        # No temperature evolution in this model (already at outside temp).
+        return None
+
+    raw_k = (window_open_area_m2 * wind * discharge_coeff) / volume_m3
+    realistic_k = raw_k / thermal_mass_factor
+    if realistic_k <= 0:
+        return None
+
+    ratio = (target - outside) / delta0
+    # If already at target (within tolerance), return 0.
+    if abs(target - inside) <= 0.05:
+        return 0.0
+
+    # Target must be between current temp and outside temp to be reachable.
+    # ratio in (0, 1) => reachable in finite time.
+    if ratio <= 0.0 or ratio >= 1.0:
+        return None
+
+    t_seconds = -math.log(ratio) / realistic_k
+    if t_seconds < 0:
+        return None
+    return t_seconds / 60.0
+
+
+def _format_minutes_duration(minutes: float) -> str:
+    if minutes < 0:
+        return "—"
+    if minutes < 60:
+        return f"{minutes:.0f} min"
+    return f"{minutes / 60.0:.1f} h"
 
 
 def _build_notifications(
@@ -219,6 +337,7 @@ with tab1:
             return
 
         door_data = _get_latest_door_current_data() or {}
+        is_window_open = bool(door_data.get("window_open", data.get("window_open", False)))
 
         outside_temp_c: float | None = None
         outside_is_raining: bool | None = None
@@ -364,6 +483,40 @@ with tab1:
                     {outside_rain_html}
                 """, unsafe_allow_html=True)
 
+                if is_window_open:
+                    metric_left, metric_right = st.columns(2)
+
+                    predicted_temp = _predict_room_temp_after_minutes(
+                        inside_temp_c=temp_value,
+                        outside_temp_c=outside_temp_c,
+                        wind_speed_m_s=outside_wind_speed_m_s,
+                        t_minutes=10.0,
+                    )
+
+                    with metric_left:
+                        if predicted_temp is not None:
+                            st.metric(
+                                "Predicted temp (IN 10 MIN)",
+                                f"{predicted_temp:.1f} °C",
+                            )
+                        else:
+                            st.metric("Predicted temp (IN 10 MIN)", "—")
+
+                    with metric_right:
+                        minutes_to_22 = _time_to_reach_target_temp_minutes(
+                            inside_temp_c=temp_value,
+                            outside_temp_c=outside_temp_c,
+                            wind_speed_m_s=outside_wind_speed_m_s,
+                            target_temp_c=22.0,
+                        )
+                        if minutes_to_22 is not None:
+                            st.metric("Time until 22°C", _format_minutes_duration(minutes_to_22))
+                        else:
+                            st.metric("Time until 22°C", "—")
+
+                    if predicted_temp is None or minutes_to_22 is None:
+                        st.caption("Prediction/time may be unavailable if outside temp or wind speed is missing, or if 22°C isn't reachable while the window is open.")
+
         # --- CARD 4: DOOR STATUS ---
         with col4:
             with st.container(border=True):
@@ -371,7 +524,7 @@ with tab1:
 
                 # Door/window tracking is stored separately (door_current.json),
                 # but keep a soft fallback for older files.
-                is_open = bool(door_data.get("window_open", data.get("window_open", False)))
+                is_open = is_window_open
                 oxygenation = data.get("oxygenation")
                 if oxygenation is None:
                     oxygenation = 100 if is_open else 0

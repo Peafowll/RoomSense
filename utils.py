@@ -17,6 +17,7 @@ def get_current_weather(location: tuple[float, float]):
         "latitude": location[0],
         "longitude": location[1],
         "current": "temperature_2m,rain,wind_speed_10m"
+        ,"wind_speed_unit": "ms"
     }
     
     try:
